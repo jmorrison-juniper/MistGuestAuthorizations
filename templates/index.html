@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest WiFi Pre-Authorization Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            /* T-Mobile Dark Theme Colors */
+            --tm-magenta: #E20074;
+            --tm-magenta-dark: #B8005D;
+            --tm-magenta-light: #FF3399;
+            --bg-primary: #1A1A1A;
+            --bg-secondary: #2D2D2D;
+            --bg-card: #3D3D3D;
+            --bg-card-header: #4A4A4A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B3B3B3;
+            --accent-green: #00C853;
+            --accent-red: #FF5252;
+            --accent-yellow: #FFD600;
+            --accent-blue: #E20074;
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--tm-magenta) 0%, var(--tm-magenta-dark) 100%) !important;
+            border-bottom: none;
+            box-shadow: 0 2px 10px rgba(226, 0, 116, 0.3);
+        }
+        
+        .navbar-brand {
+            color: var(--text-primary) !important;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+        }
+        
+        .card-header {
+            background-color: var(--bg-card-header);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-weight: 600;
+            color: var(--text-primary);
+            border-radius: 12px 12px 0 0 !important;
+        }
+        
+        .form-select, .form-control {
+            background-color: #1A1A1A;
+            border: 2px solid rgba(255,255,255,0.3);
+            color: #FFFFFF;
+        }
+        
+        .form-control::placeholder {
+            color: #FFFFFF;
+            opacity: 0.7;
+        }
+        
+        .form-select:focus, .form-control:focus {
+            background-color: #1A1A1A;
+            border-color: var(--tm-magenta);
+            color: #FFFFFF;
+            box-shadow: 0 0 0 0.25rem rgba(226, 0, 116, 0.25);
+        }
+        
+        .form-select option {
+            background-color: #1A1A1A;
+            color: #FFFFFF;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--tm-magenta) 0%, var(--tm-magenta-dark) 100%);
+            border: none;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--tm-magenta-light) 0%, var(--tm-magenta) 100%);
+            border: none;
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary:focus {
+            box-shadow: 0 0 0 0.25rem rgba(226, 0, 116, 0.5);
+        }
+        
+        .btn-outline-light {
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        .btn-outline-light:hover {
+            background-color: rgba(255,255,255,0.2);
+            border-color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-red) 0%, #E64545 100%);
+            border: none;
+        }
+        
+        .table {
+            color: var(--text-primary);
+        }
+        
+        .table-dark {
+            --bs-table-bg: var(--bg-card);
+            --bs-table-border-color: rgba(255,255,255,0.1);
+        }
+        
+        .table-dark thead th {
+            background-color: var(--bg-card-header);
+            color: var(--text-primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--tm-magenta);
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-badge.active {
+            background-color: rgba(0, 200, 83, 0.2);
+            color: var(--accent-green);
+        }
+        
+        .status-badge.expired {
+            background-color: rgba(255, 82, 82, 0.2);
+            color: var(--accent-red);
+        }
+        
+        .connection-status {
+            font-size: 0.85rem;
+        }
+        
+        .connection-status.connected {
+            color: var(--accent-green);
+        }
+        
+        .connection-status.disconnected {
+            color: var(--accent-red);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+            color: var(--tm-magenta);
+        }
+        
+        .loading-spinner {
+            display: none;
+        }
+        
+        .loading .loading-spinner {
+            display: inline-block;
+        }
+        
+        .modal-content {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+        }
+        
+        .modal-header {
+            background-color: var(--bg-card-header);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .modal-footer {
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .btn-close {
+            filter: invert(1);
+        }
+        
+        .guest-card {
+            background-color: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s ease;
+        }
+        
+        .guest-card:hover {
+            border-color: var(--tm-magenta);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(226, 0, 116, 0.3);
+        }
+        
+        .guest-card .mac {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9rem;
+            color: var(--tm-magenta);
+        }
+        
+        .guest-card .name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .guest-card .meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .time-remaining {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+        
+        .time-remaining.plenty {
+            background-color: rgba(0, 200, 83, 0.2);
+            color: var(--accent-green);
+        }
+        
+        .time-remaining.warning {
+            background-color: rgba(255, 214, 0, 0.2);
+            color: var(--accent-yellow);
+        }
+        
+        .time-remaining.critical {
+            background-color: rgba(255, 82, 82, 0.2);
+            color: var(--accent-red);
+        }
+        
+        .search-client-result {
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .search-client-result:hover {
+            background-color: rgba(255,255,255,0.1);
+            border-color: var(--tm-magenta);
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, var(--bg-card-header) 0%, var(--bg-card) 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .stats-card .number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--tm-magenta);
+        }
+        
+        .stats-card .label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .duration-presets {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .duration-preset {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .duration-preset:hover {
+            background-color: var(--tm-magenta);
+            border-color: var(--tm-magenta);
+            color: var(--text-primary);
+        }
+
+        .duration-preset.active {
+            background-color: var(--tm-magenta);
+            border-color: var(--tm-magenta);
+            color: var(--text-primary);
+        }
+        
+        /* Badge overrides for T-Mobile theme */
+        .badge.bg-success {
+            background: linear-gradient(135deg, var(--accent-green) 0%, #00A846 100%) !important;
+        }
+        
+        .badge.bg-warning {
+            background: linear-gradient(135deg, var(--accent-yellow) 0%, #E6C200 100%) !important;
+            color: #1A1A1A !important;
+        }
+        
+        .badge.bg-danger {
+            background: linear-gradient(135deg, var(--accent-red) 0%, #E64545 100%) !important;
+        }
+        
+        /* Card header icons */
+        .card-header .bi-wifi,
+        .card-header .bi-person-plus,
+        .card-header .bi-people {
+            color: var(--tm-magenta) !important;
+        }
+        
+        .card-header .bi-geo-alt,
+        .card-header .bi-broadcast {
+            color: var(--tm-magenta-light) !important;
+        }
+        
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast-notification {
+            min-width: 350px;
+            max-width: 500px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid;
+        }
+        
+        .toast-notification.success {
+            background: linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 100%);
+            border-left-color: #28a745;
+        }
+        
+        .toast-notification.error {
+            background: linear-gradient(135deg, #3a1a1a 0%, #1f0d0d 100%);
+            border-left-color: #dc3545;
+        }
+        
+        .toast-notification.warning {
+            background: linear-gradient(135deg, #3a3a1a 0%, #1f1f0d 100%);
+            border-left-color: #ffc107;
+        }
+        
+        .toast-notification .toast-icon {
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+        
+        .toast-notification.success .toast-icon { color: #28a745; }
+        .toast-notification.error .toast-icon { color: #dc3545; }
+        .toast-notification.warning .toast-icon { color: #ffc107; }
+        
+        .toast-notification .toast-content {
+            flex: 1;
+        }
+        
+        .toast-notification .toast-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+        
+        .toast-notification .toast-message {
+            color: #adb5bd;
+            font-size: 0.9rem;
+            word-break: break-word;
+        }
+        
+        .toast-notification .toast-close {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        
+        .toast-notification .toast-close:hover {
+            color: #fff;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        /* Additional fields display in guest cards */
+        .guest-card .fields-row {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            font-size: 0.85rem;
+        }
+        
+        .guest-card .field-item {
+            color: #888;
+        }
+        
+        .guest-card .field-item .field-label {
+            color: #666;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-right: 4px;
+        }
+        
+        .guest-card .field-item .field-value {
+            color: #adb5bd;
+        }
+        
+        /* Compact form labels */
+        .form-label-sm {
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        /* iPad Landscape Optimizations (1024px - 1366px) */
+        @media (min-width: 768px) and (max-width: 1400px) {
+            .container-fluid {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .card-body {
+                padding: 0.75rem;
+            }
+            
+            .stats-card {
+                padding: 1rem;
+            }
+            
+            .stats-card .number {
+                font-size: 1.75rem;
+            }
+            
+            .guest-card {
+                padding: 0.75rem;
+            }
+            
+            .modal-body {
+                padding: 0.75rem;
+            }
+            
+            /* Reduce modal padding for compact look */
+            .modal-header, .modal-footer {
+                padding: 0.75rem 1rem;
+            }
+        }
+        
+        /* Smaller screens (portrait tablets, phones) */
+        @media (max-width: 767px) {
+            .duration-presets {
+                gap: 0.25rem;
+            }
+            
+            .duration-preset {
+                padding: 0.2rem 0.5rem;
+                font-size: 0.7rem;
+            }
+            
+            .stats-card .number {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast notification container -->
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-wifi me-2"></i>Guest WiFi Pre-Authorization Portal
+            </a>
+            <div class="d-flex align-items-center">
+                <span id="connectionStatus" class="connection-status me-3">
+                    <i class="bi bi-circle-fill me-1"></i>
+                    <span id="connectionText">Not Connected</span>
+                </span>
+                <button id="testConnectionBtn" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-plug me-1"></i>Test Connection
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <!-- Site & WLAN Selector -->
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-geo-alt me-2"></i>Select Site
+                    </div>
+                    <div class="card-body">
+                        <input type="text" id="siteSearch" class="form-control mb-2" placeholder="Search sites...">
+                        <select id="siteSelector" class="form-select" disabled>
+                            <option value="">Connect to Mist API first...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-broadcast me-2"></i>Select Guest WLAN
+                    </div>
+                    <div class="card-body">
+                        <select id="wlanSelector" class="form-select" disabled>
+                            <option value="">Select a site first...</option>
+                        </select>
+                        <small class="text-secondary mt-2 d-block">
+                            <i class="bi bi-info-circle me-1"></i>Only WLANs with guest portal features are shown
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-plus-circle me-2"></i>Quick Actions
+                    </div>
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <button id="addGuestBtn" class="btn btn-primary mb-2" disabled>
+                            <i class="bi bi-person-plus me-2"></i>Add Guest Authorization
+                        </button>
+                        <button id="bulkImportBtn" class="btn btn-outline-primary mb-2" disabled>
+                            <i class="bi bi-cloud-upload me-2"></i>Bulk Import CSV
+                        </button>
+                        <button id="refreshBtn" class="btn btn-outline-light" disabled>
+                            <i class="bi bi-arrow-clockwise me-2"></i>Refresh Guest List
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div id="statsSection" class="row mb-4" style="display: none;">
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <div class="number" id="totalGuests">0</div>
+                    <div class="label">Total Authorizations</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <div class="number" id="activeGuests" style="color: var(--accent-green);">0</div>
+                    <div class="label">Active</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <div class="number" id="expiringGuests" style="color: var(--accent-yellow);">0</div>
+                    <div class="label">Expiring Soon</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <div class="number" id="expiredGuests" style="color: var(--accent-red);">0</div>
+                    <div class="label">Expired</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guest List -->
+        <div id="guestSection" style="display: none;">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-people me-2"></i>Authorized Guests</span>
+                    <input type="text" id="guestSearch" class="form-control form-control-sm" style="max-width: 250px;" placeholder="Search guests...">
+                </div>
+                <div class="card-body">
+                    <div id="guestList">
+                        <!-- Guest cards will be populated here -->
+                    </div>
+                    <div id="noGuests" class="text-center text-secondary py-4" style="display: none;">
+                        <i class="bi bi-person-x" style="font-size: 3rem; opacity: 0.5;"></i>
+                        <p class="mt-2">No authorized guests found for this WLAN.</p>
+                        <p class="small">Click "Add Guest Authorization" to pre-authorize a device.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <i class="bi bi-wifi"></i>
+            <h4>Welcome to Guest WiFi Pre-Authorization Portal</h4>
+            <p>Connect to the Mist API and select a site to manage guest WiFi authorizations.</p>
+            <p class="small text-secondary">
+                Pre-authorize devices that don't support interactive captive portals,<br>
+                such as IoT devices, printers, or legacy equipment.
+            </p>
+        </div>
+    </div>
+
+    <!-- Add Guest Modal -->
+    <div class="modal fade" id="addGuestModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Add Guest Authorization</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Left Column: Device & Guest Info -->
+                        <div class="col-lg-4 col-md-6">
+                            <h6 class="mb-3"><i class="bi bi-input-cursor me-2"></i>Device & Guest Info</h6>
+                            <form id="addGuestForm">
+                                <div class="mb-2">
+                                    <label for="guestMac" class="form-label form-label-sm">MAC Address <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-sm" id="guestMac" placeholder="AA:BB:CC:DD:EE:FF" required>
+                                    <small class="text-secondary" style="font-size: 0.7rem;">Formats: AA:BB:CC:DD:EE:FF, AA-BB-CC-DD-EE-FF, AABBCCDDEEFF</small>
+                                </div>
+                                <div class="mb-2">
+                                    <label for="guestName" class="form-label form-label-sm">Guest Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="guestName" placeholder="John Smith">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="guestEmail" class="form-label form-label-sm">Email Address</label>
+                                    <input type="email" class="form-control form-control-sm" id="guestEmail" placeholder="john@example.com">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="guestCompany" class="form-label form-label-sm">Company</label>
+                                    <input type="text" class="form-control form-control-sm" id="guestCompany" placeholder="Acme Corp">
+                                </div>
+                        </div>
+                        <!-- Middle Column: Custom Fields & Duration -->
+                        <div class="col-lg-4 col-md-6">
+                            <h6 class="mb-3"><i class="bi bi-sliders me-2"></i>Additional Details</h6>
+                                <div class="mb-2">
+                                    <label for="guestField1" class="form-label form-label-sm">Custom Field 1</label>
+                                    <input type="text" class="form-control form-control-sm" id="guestField1" placeholder="Optional">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="guestField2" class="form-label form-label-sm">Custom Field 2</label>
+                                    <input type="text" class="form-control form-control-sm" id="guestField2" placeholder="Optional">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="guestField3" class="form-label form-label-sm">Sponsor Email</label>
+                                    <input type="email" class="form-control form-control-sm" id="guestField3" placeholder="Sponsor's email">
+                                </div>
+                                <!-- field4 is auto-populated with the API token name on the server side -->
+                                <input type="hidden" id="guestField4" value="">
+                                <div class="mb-2">
+                                    <label for="guestMinutes" class="form-label form-label-sm">Duration (minutes)</label>
+                                    <input type="number" class="form-control form-control-sm" id="guestMinutes" value="1440" min="1" max="2628000">
+                                    <div class="duration-presets mt-1">
+                                        <span class="duration-preset" data-minutes="60">1h</span>
+                                        <span class="duration-preset" data-minutes="480">8h</span>
+                                        <span class="duration-preset active" data-minutes="1440">1d</span>
+                                        <span class="duration-preset" data-minutes="10080">1w</span>
+                                        <span class="duration-preset" data-minutes="43200">30d</span>
+                                        <span class="duration-preset" data-minutes="525600">1y</span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <!-- Right Column: Connected Clients -->
+                        <div class="col-lg-4 col-md-12 mt-3 mt-lg-0">
+                            <h6 class="mb-3"><i class="bi bi-search me-2"></i>Or Select Connected Client</h6>
+                            <input type="text" class="form-control form-control-sm mb-2" id="clientSearch" placeholder="Search connected clients...">
+                            <div id="clientSearchResults" style="max-height: 280px; overflow-y: auto;">
+                                <div class="text-center text-secondary py-3">
+                                    <small>Type to search for connected clients by MAC, hostname, or IP</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitGuestBtn">
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2" role="status"></span>
+                        <i class="bi bi-check-lg me-1"></i>Authorize Guest
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Guest Modal -->
+    <div class="modal fade" id="editGuestModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Guest Authorization</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editGuestForm">
+                        <input type="hidden" id="editGuestMac">
+                        <div class="row">
+                            <!-- Left Column -->
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label class="form-label form-label-sm">MAC Address</label>
+                                    <input type="text" class="form-control form-control-sm" id="editGuestMacDisplay" disabled>
+                                </div>
+                                <div class="mb-2">
+                                    <label for="editGuestName" class="form-label form-label-sm">Guest Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="editGuestName">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="editGuestEmail" class="form-label form-label-sm">Email Address</label>
+                                    <input type="email" class="form-control form-control-sm" id="editGuestEmail">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="editGuestCompany" class="form-label form-label-sm">Company</label>
+                                    <input type="text" class="form-control form-control-sm" id="editGuestCompany">
+                                </div>
+                            </div>
+                            <!-- Right Column -->
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="editGuestField1" class="form-label form-label-sm">Custom Field 1</label>
+                                    <input type="text" class="form-control form-control-sm" id="editGuestField1">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="editGuestField2" class="form-label form-label-sm">Custom Field 2</label>
+                                    <input type="text" class="form-control form-control-sm" id="editGuestField2">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="editGuestField3" class="form-label form-label-sm">Sponsor Email</label>
+                                    <input type="email" class="form-control form-control-sm" id="editGuestField3" placeholder="Sponsor's email">
+                                </div>
+                                <!-- field4 is auto-populated with the API token name on the server side -->
+                                <input type="hidden" id="editGuestField4" value="">
+                                <div class="mb-2">
+                                    <label for="editGuestMinutes" class="form-label form-label-sm">Extend Authorization (minutes)</label>
+                                    <input type="number" class="form-control form-control-sm" id="editGuestMinutes" value="1440" min="1">
+                                    <div class="duration-presets mt-1">
+                                        <span class="duration-preset" data-minutes="60">1h</span>
+                                        <span class="duration-preset" data-minutes="480">8h</span>
+                                        <span class="duration-preset active" data-minutes="1440">1d</span>
+                                        <span class="duration-preset" data-minutes="10080">1w</span>
+                                        <span class="duration-preset" data-minutes="43200">30d</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger me-auto" id="deleteGuestBtn">
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2" role="status"></span>
+                        <i class="bi bi-trash me-1"></i>Revoke Access
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="updateGuestBtn">
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2" role="status"></span>
+                        <i class="bi bi-check-lg me-1"></i>Update
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Import Modal -->
+    <div class="modal fade" id="bulkImportModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-cloud-upload me-2"></i>Bulk Import Guests from CSV</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Instructions:</strong> Upload a CSV file to add multiple guest authorizations at once. 
+                        Each row will be added to the specified site and WLAN.
+                    </div>
+                    
+                    <!-- Download Template Section -->
+                    <div class="card mb-3" style="background: var(--bg-secondary); border-color: var(--border-color);">
+                        <div class="card-body">
+                            <h6 class="mb-2"><i class="bi bi-download me-2"></i>Step 1: Download Template</h6>
+                            <p class="small text-secondary mb-2">Download the example CSV to see the required format. Fill it out with your guest data.</p>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="downloadTemplateBtn">
+                                <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Example CSV
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Upload Section -->
+                    <div class="card" style="background: var(--bg-secondary); border-color: var(--border-color);">
+                        <div class="card-body">
+                            <h6 class="mb-2"><i class="bi bi-upload me-2"></i>Step 2: Upload Your CSV</h6>
+                            <p class="small text-secondary mb-2">Select your completed CSV file to import guests.</p>
+                            <div class="mb-3">
+                                <input type="file" class="form-control form-control-sm" id="csvFileInput" accept=".csv">
+                            </div>
+                            <div id="csvPreview" style="display: none;">
+                                <h6 class="mb-2"><i class="bi bi-eye me-2"></i>Preview</h6>
+                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-sm table-dark" id="csvPreviewTable">
+                                        <thead id="csvPreviewHead"></thead>
+                                        <tbody id="csvPreviewBody"></tbody>
+                                    </table>
+                                </div>
+                                <small id="csvRowCount" class="text-secondary"></small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Import Progress -->
+                    <div id="importProgress" class="mt-3" style="display: none;">
+                        <h6><i class="bi bi-hourglass-split me-2"></i>Import Progress</h6>
+                        <div class="progress mb-2" style="height: 20px;">
+                            <div class="progress-bar bg-primary" id="importProgressBar" role="progressbar" style="width: 0%;">0%</div>
+                        </div>
+                        <div id="importStatus" class="small text-secondary"></div>
+                        <div id="importResults" class="mt-2" style="display: none;">
+                            <div class="alert alert-success py-2 mb-1" id="importSuccessAlert" style="display: none;">
+                                <i class="bi bi-check-circle me-1"></i><span id="importSuccessCount">0</span> guests imported successfully
+                            </div>
+                            <div class="alert alert-danger py-2 mb-1" id="importErrorAlert" style="display: none;">
+                                <i class="bi bi-x-circle me-1"></i><span id="importErrorCount">0</span> guests failed
+                                <div id="importErrorDetails" class="small mt-1" style="max-height: 100px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="startImportBtn" disabled>
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2" role="status"></span>
+                        <i class="bi bi-cloud-upload me-1"></i>Import Guests
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // State management
+        let sites = [];
+        let wlans = [];
+        let guests = [];
+        let currentSiteId = null;
+        let currentWlanId = null;
+        let isConnected = false;
+        let clientSearchTimeout = null;
+
+        // DOM elements
+        const testConnectionBtn = document.getElementById('testConnectionBtn');
+        const siteSelector = document.getElementById('siteSelector');
+        const siteSearch = document.getElementById('siteSearch');
+        const wlanSelector = document.getElementById('wlanSelector');
+        const addGuestBtn = document.getElementById('addGuestBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectionText = document.getElementById('connectionText');
+        const statsSection = document.getElementById('statsSection');
+        const guestSection = document.getElementById('guestSection');
+        const emptyState = document.getElementById('emptyState');
+
+        // Bootstrap modals
+        const addGuestModal = new bootstrap.Modal(document.getElementById('addGuestModal'));
+        const editGuestModal = new bootstrap.Modal(document.getElementById('editGuestModal'));
+        const bulkImportModal = new bootstrap.Modal(document.getElementById('bulkImportModal'));
+        
+        // Bulk import state
+        let sitesWlansMap = null;
+        let csvData = [];
+        const bulkImportBtn = document.getElementById('bulkImportBtn');
+
+        // Update connection status display
+        function updateConnectionStatus(connected, orgName = '') {
+            isConnected = connected;
+            connectionStatus.className = `connection-status me-3 ${connected ? 'connected' : 'disconnected'}`;
+            connectionText.textContent = connected ? `Connected: ${orgName}` : 'Not Connected';
+            siteSelector.disabled = !connected;
+        }
+
+        // Test API connection
+        async function testConnection() {
+            testConnectionBtn.disabled = true;
+            testConnectionBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Testing...';
+            
+            try {
+                const response = await fetch('/api/test-connection', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateConnectionStatus(true, data.org_name);
+                    loadSites();
+                } else {
+                    updateConnectionStatus(false);
+                    alert('Connection failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                updateConnectionStatus(false);
+                alert('Connection error: ' + error.message);
+            } finally {
+                testConnectionBtn.disabled = false;
+                testConnectionBtn.innerHTML = '<i class="bi bi-plug me-1"></i>Test Connection';
+            }
+        }
+
+        // Load sites from API
+        async function loadSites() {
+            try {
+                const response = await fetch('/api/sites');
+                const data = await response.json();
+                
+                if (data.success) {
+                    sites = data.sites;
+                    populateSiteSelector(sites);
+                } else {
+                    alert('Failed to load sites: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error loading sites: ' + error.message);
+            }
+        }
+
+        // Populate site selector dropdown
+        function populateSiteSelector(siteList) {
+            siteSelector.innerHTML = '<option value="">Select a site...</option>';
+            siteList.forEach(site => {
+                const option = document.createElement('option');
+                option.value = site.id;
+                option.textContent = site.name;
+                option.dataset.address = site.address || '';
+                siteSelector.appendChild(option);
+            });
+        }
+
+        // Filter sites based on search
+        function filterSites() {
+            const searchTerm = siteSearch.value.toLowerCase();
+            const filteredSites = sites.filter(site => 
+                site.name.toLowerCase().includes(searchTerm) ||
+                (site.address && site.address.toLowerCase().includes(searchTerm))
+            );
+            populateSiteSelector(filteredSites);
+        }
+
+        // Load WLANs for a site
+        async function loadWlans(siteId) {
+            wlanSelector.disabled = true;
+            wlanSelector.innerHTML = '<option value="">Loading WLANs...</option>';
+            
+            try {
+                const response = await fetch(`/api/sites/${siteId}/wlans`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    wlans = data.wlans;
+                    populateWlanSelector(wlans);
+                } else {
+                    wlanSelector.innerHTML = '<option value="">Error loading WLANs</option>';
+                }
+            } catch (error) {
+                wlanSelector.innerHTML = '<option value="">Error loading WLANs</option>';
+            }
+        }
+
+        // Populate WLAN selector dropdown
+        function populateWlanSelector(wlanList) {
+            wlanSelector.innerHTML = '<option value="">Select a WLAN...</option>';
+            if (wlanList.length === 0) {
+                wlanSelector.innerHTML = '<option value="">No guest WLANs found</option>';
+                return;
+            }
+            
+            wlanList.forEach(wlan => {
+                const option = document.createElement('option');
+                option.value = wlan.id;
+                let label = wlan.ssid;
+                if (wlan.org_level) {
+                    label += ' (Org)';
+                }
+                option.textContent = label;
+                wlanSelector.appendChild(option);
+            });
+            wlanSelector.disabled = false;
+        }
+
+        // Load guests for a WLAN
+        async function loadGuests() {
+            if (!currentSiteId || !currentWlanId) return;
+            
+            try {
+                const response = await fetch(`/api/sites/${currentSiteId}/wlans/${currentWlanId}/guests`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    guests = data.guests;
+                    displayGuests(guests);
+                    updateStats(guests);
+                } else {
+                    console.error('Failed to load guests:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading guests:', error);
+            }
+        }
+
+        // Display guest list
+        function displayGuests(guestList) {
+            const guestListContainer = document.getElementById('guestList');
+            const noGuests = document.getElementById('noGuests');
+            const searchTerm = document.getElementById('guestSearch').value.toLowerCase();
+            
+            // Filter by search - includes all fields
+            const filteredGuests = guestList.filter(g => {
+                const searchable = `${g.mac} ${g.name} ${g.email} ${g.company} ${g.field1 || ''} ${g.field2 || ''} ${g.field3 || ''} ${g.field4 || ''}`.toLowerCase();
+                return searchable.includes(searchTerm);
+            });
+            
+            if (filteredGuests.length === 0) {
+                guestListContainer.innerHTML = '';
+                noGuests.style.display = 'block';
+                return;
+            }
+            
+            noGuests.style.display = 'none';
+            guestListContainer.innerHTML = filteredGuests.map(guest => {
+                const timeClass = guest.is_expired ? 'critical' : (guest.remaining_minutes < 60 ? 'critical' : (guest.remaining_minutes < 480 ? 'warning' : 'plenty'));
+                const timeText = guest.is_expired ? 'Expired' : formatDuration(guest.remaining_minutes);
+                const statusClass = guest.is_expired ? 'expired' : 'active';
+                
+                // Build fields row if any custom fields exist
+                const hasFields = guest.field1 || guest.field2 || guest.field3 || guest.field4;
+                const fieldsHtml = hasFields ? `
+                    <div class="fields-row">
+                        ${guest.field1 ? `<div class="field-item"><span class="field-label">Field 1:</span><span class="field-value">${guest.field1}</span></div>` : ''}
+                        ${guest.field2 ? `<div class="field-item"><span class="field-label">Field 2:</span><span class="field-value">${guest.field2}</span></div>` : ''}
+                        ${guest.field3 ? `<div class="field-item"><span class="field-label">Sponsor:</span><span class="field-value">${guest.field3}</span></div>` : ''}
+                        ${guest.field4 ? `<div class="field-item"><span class="field-label">Created By:</span><span class="field-value">${guest.field4}</span></div>` : ''}
+                    </div>
+                ` : '';
+                
+                return `
+                    <div class="guest-card" onclick="editGuest('${guest.mac}')" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="mac">${guest.mac}</div>
+                                <div class="name">${guest.name || 'Unknown Device'}</div>
+                                <div class="meta">
+                                    ${guest.email ? `<i class="bi bi-envelope me-1"></i>${guest.email}` : ''}
+                                    ${guest.company ? `<span class="ms-2"><i class="bi bi-building me-1"></i>${guest.company}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="status-badge ${statusClass}">${guest.is_expired ? 'Expired' : 'Active'}</span>
+                                <div class="time-remaining ${timeClass} mt-2">
+                                    <i class="bi bi-clock me-1"></i>${timeText}
+                                </div>
+                            </div>
+                        </div>
+                        ${fieldsHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Show toast notification
+        function showToast(type, title, message, duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast-notification ${type}`;
+            
+            const iconMap = {
+                success: 'bi-check-circle-fill',
+                error: 'bi-exclamation-triangle-fill',
+                warning: 'bi-exclamation-circle-fill'
+            };
+            
+            toast.innerHTML = `
+                <i class="bi ${iconMap[type] || iconMap.error} toast-icon"></i>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.animation = 'slideOut 0.3s ease-in forwards';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        // ============== BULK IMPORT FUNCTIONS ==============
+        
+        // Download CSV template
+        async function downloadCsvTemplate() {
+            try {
+                const response = await fetch('/api/csv-template');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'guest_import_template.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                showToast('error', 'Download Failed', 'Could not download template: ' + error.message);
+            }
+        }
+        
+        // Parse CSV file
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                // Handle quoted values with commas
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let char of lines[i]) {
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/^"|"$/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim().replace(/^"|"$/g, ''));
+                
+                if (values.length >= 3) { // At minimum need site_name, ssid, mac
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index] || '';
+                    });
+                    data.push(row);
+                }
+            }
+            
+            return { headers, data };
+        }
+        
+        // Preview CSV file
+        function previewCSV(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const { headers, data } = parseCSV(text);
+                csvData = data;
+                
+                const previewDiv = document.getElementById('csvPreview');
+                const headRow = document.getElementById('csvPreviewHead');
+                const bodyRows = document.getElementById('csvPreviewBody');
+                const rowCount = document.getElementById('csvRowCount');
+                const startImportBtn = document.getElementById('startImportBtn');
+                
+                if (data.length === 0) {
+                    previewDiv.style.display = 'none';
+                    startImportBtn.disabled = true;
+                    showToast('error', 'Invalid CSV', 'No valid data rows found in the CSV file.');
+                    return;
+                }
+                
+                // Build header row
+                headRow.innerHTML = '<tr>' + headers.map(h => `<th class="small">${h}</th>`).join('') + '</tr>';
+                
+                // Build preview rows (first 5)
+                const previewRows = data.slice(0, 5);
+                bodyRows.innerHTML = previewRows.map(row => {
+                    return '<tr>' + headers.map(h => `<td class="small">${row[h] || ''}</td>`).join('') + '</tr>';
+                }).join('');
+                
+                rowCount.textContent = `Showing ${previewRows.length} of ${data.length} rows`;
+                previewDiv.style.display = 'block';
+                startImportBtn.disabled = false;
+            };
+            reader.readAsText(file);
+        }
+        
+        // Load sites/WLANs mapping
+        async function loadSitesWlansMap() {
+            try {
+                const response = await fetch('/api/sites-wlans-map');
+                const data = await response.json();
+                if (data.success) {
+                    sitesWlansMap = data.map;
+                    return true;
+                } else {
+                    throw new Error(data.error || 'Failed to load mapping');
+                }
+            } catch (error) {
+                showToast('error', 'Mapping Error', 'Could not load sites/WLANs mapping: ' + error.message);
+                return false;
+            }
+        }
+        
+        // Start bulk import
+        async function startBulkImport() {
+            if (csvData.length === 0) {
+                showToast('error', 'No Data', 'Please select a CSV file first.');
+                return;
+            }
+            
+            const startBtn = document.getElementById('startImportBtn');
+            const progressDiv = document.getElementById('importProgress');
+            const progressBar = document.getElementById('importProgressBar');
+            const statusDiv = document.getElementById('importStatus');
+            const resultsDiv = document.getElementById('importResults');
+            const successAlert = document.getElementById('importSuccessAlert');
+            const errorAlert = document.getElementById('importErrorAlert');
+            const successCount = document.getElementById('importSuccessCount');
+            const errorCount = document.getElementById('importErrorCount');
+            const errorDetails = document.getElementById('importErrorDetails');
+            
+            // Disable button and show progress
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing...';
+            progressDiv.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            
+            // Load mapping if not already loaded
+            if (!sitesWlansMap) {
+                statusDiv.textContent = 'Loading sites and WLANs mapping...';
+                const loaded = await loadSitesWlansMap();
+                if (!loaded) {
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>Import Guests';
+                    return;
+                }
+            }
+            
+            let successCountVal = 0;
+            let errorCountVal = 0;
+            const errors = [];
+            
+            for (let i = 0; i < csvData.length; i++) {
+                const row = csvData[i];
+                const progress = Math.round(((i + 1) / csvData.length) * 100);
+                progressBar.style.width = progress + '%';
+                progressBar.textContent = progress + '%';
+                statusDiv.textContent = `Processing row ${i + 1} of ${csvData.length}...`;
+                
+                // Look up site and WLAN IDs
+                const siteName = (row.site_name || '').toLowerCase().trim();
+                const ssid = (row.ssid || '').toLowerCase().trim();
+                
+                const siteInfo = sitesWlansMap[siteName];
+                if (!siteInfo) {
+                    errors.push(`Row ${i + 1}: Site "${row.site_name}" not found`);
+                    errorCountVal++;
+                    continue;
+                }
+                
+                const wlanId = siteInfo.wlans[ssid];
+                if (!wlanId) {
+                    errors.push(`Row ${i + 1}: WLAN "${row.ssid}" not found at site "${row.site_name}"`);
+                    errorCountVal++;
+                    continue;
+                }
+                
+                // Build import payload
+                const payload = {
+                    site_id: siteInfo.id,
+                    wlan_id: wlanId,
+                    mac: row.mac || '',
+                    name: row.name || '',
+                    email: row.email || '',
+                    company: row.company || '',
+                    field1: row.field1 || '',
+                    field2: row.field2 || '',
+                    field3: row.field3_sponsor_email || row.field3 || '',
+                    minutes: parseInt(row.minutes) || 1440
+                };
+                
+                try {
+                    const response = await fetch('/api/bulk-import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        successCountVal++;
+                    } else {
+                        errors.push(`Row ${i + 1} (${row.mac}): ${result.error}`);
+                        errorCountVal++;
+                    }
+                } catch (error) {
+                    errors.push(`Row ${i + 1} (${row.mac}): ${error.message}`);
+                    errorCountVal++;
+                }
+            }
+            
+            // Show results
+            resultsDiv.style.display = 'block';
+            statusDiv.textContent = 'Import complete!';
+            
+            if (successCountVal > 0) {
+                successAlert.style.display = 'block';
+                successCount.textContent = successCountVal;
+            } else {
+                successAlert.style.display = 'none';
+            }
+            
+            if (errorCountVal > 0) {
+                errorAlert.style.display = 'block';
+                errorCount.textContent = errorCountVal;
+                errorDetails.innerHTML = errors.map(e => `<div>• ${e}</div>`).join('');
+            } else {
+                errorAlert.style.display = 'none';
+            }
+            
+            // Reset button
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>Import Guests';
+            
+            // Refresh guest list if we're viewing the current site/WLAN
+            if (currentSiteId && currentWlanId) {
+                loadGuests();
+            }
+            
+            // Show summary toast
+            if (successCountVal > 0 && errorCountVal === 0) {
+                showToast('success', 'Import Complete', `Successfully imported ${successCountVal} guests.`);
+            } else if (successCountVal > 0 && errorCountVal > 0) {
+                showToast('warning', 'Import Partial', `Imported ${successCountVal} guests, ${errorCountVal} failed.`);
+            } else {
+                showToast('error', 'Import Failed', `All ${errorCountVal} imports failed.`);
+            }
+        }
+        
+        // Reset bulk import modal
+        function resetBulkImportModal() {
+            csvData = [];
+            document.getElementById('csvFileInput').value = '';
+            document.getElementById('csvPreview').style.display = 'none';
+            document.getElementById('importProgress').style.display = 'none';
+            document.getElementById('importResults').style.display = 'none';
+            document.getElementById('startImportBtn').disabled = true;
+            document.getElementById('importProgressBar').style.width = '0%';
+            document.getElementById('importProgressBar').textContent = '0%';
+        }
+
+        // ============== END BULK IMPORT FUNCTIONS ==============
+
+        // Format duration in human-readable format
+        function formatDuration(minutes) {
+            if (minutes < 60) return `${minutes}m`;
+            if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+            const days = Math.floor(minutes / 1440);
+            const hours = Math.floor((minutes % 1440) / 60);
+            return days > 1 ? `${days} days` : `${days}d ${hours}h`;
+        }
+
+        // Update stats display
+        function updateStats(guestList) {
+            const total = guestList.length;
+            const active = guestList.filter(g => !g.is_expired).length;
+            const expiring = guestList.filter(g => !g.is_expired && g.remaining_minutes < 60).length;
+            const expired = guestList.filter(g => g.is_expired).length;
+            
+            document.getElementById('totalGuests').textContent = total;
+            document.getElementById('activeGuests').textContent = active;
+            document.getElementById('expiringGuests').textContent = expiring;
+            document.getElementById('expiredGuests').textContent = expired;
+        }
+
+        // Search connected clients
+        async function searchClients(query) {
+            if (!currentSiteId) return;
+            
+            const resultsContainer = document.getElementById('clientSearchResults');
+            
+            if (!query || query.length < 2) {
+                resultsContainer.innerHTML = '<div class="text-center text-secondary py-3"><small>Type at least 2 characters to search</small></div>';
+                return;
+            }
+            
+            resultsContainer.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span> Searching...</div>';
+            
+            try {
+                const response = await fetch(`/api/sites/${currentSiteId}/clients/search?query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if (data.success && data.clients.length > 0) {
+                    resultsContainer.innerHTML = data.clients.map(client => `
+                        <div class="search-client-result" onclick="selectClient('${client.mac}', '${client.hostname || ''}')">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong style="font-family: monospace;">${client.mac}</strong>
+                                    <div class="small text-secondary">${client.hostname || 'Unknown'}</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="small">${client.ssid || ''}</div>
+                                    <div class="small text-secondary">${client.ip || ''}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsContainer.innerHTML = '<div class="text-center text-secondary py-3"><small>No clients found matching your search</small></div>';
+                }
+            } catch (error) {
+                resultsContainer.innerHTML = '<div class="text-center text-danger py-3"><small>Error searching clients</small></div>';
+            }
+        }
+
+        // Select a client from search results
+        function selectClient(mac, hostname) {
+            document.getElementById('guestMac').value = mac;
+            if (hostname) {
+                document.getElementById('guestName').value = hostname;
+            }
+        }
+
+        // Open edit guest modal
+        function editGuest(mac) {
+            const guest = guests.find(g => g.mac === mac);
+            if (!guest) return;
+            
+            document.getElementById('editGuestMac').value = guest.mac;
+            document.getElementById('editGuestMacDisplay').value = guest.mac;
+            document.getElementById('editGuestName').value = guest.name || '';
+            document.getElementById('editGuestEmail').value = guest.email || '';
+            document.getElementById('editGuestCompany').value = guest.company || '';
+            document.getElementById('editGuestField1').value = guest.field1 || '';
+            document.getElementById('editGuestField2').value = guest.field2 || '';
+            document.getElementById('editGuestField3').value = guest.field3 || '';
+            document.getElementById('editGuestField4').value = guest.field4 || '';
+            document.getElementById('editGuestMinutes').value = 1440;
+            
+            editGuestModal.show();
+        }
+
+        // Submit new guest authorization
+        async function submitGuest() {
+            const mac = document.getElementById('guestMac').value.trim();
+            const name = document.getElementById('guestName').value.trim();
+            const email = document.getElementById('guestEmail').value.trim();
+            const company = document.getElementById('guestCompany').value.trim();
+            const field1 = document.getElementById('guestField1').value.trim();
+            const field2 = document.getElementById('guestField2').value.trim();
+            const field3 = document.getElementById('guestField3').value.trim();
+            const field4 = document.getElementById('guestField4').value.trim();
+            const minutes = parseInt(document.getElementById('guestMinutes').value) || 1440;
+            
+            if (!mac) {
+                showToast('error', 'Validation Error', 'MAC address is required');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitGuestBtn');
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/sites/${currentSiteId}/wlans/${currentWlanId}/guests`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mac, name, email, company, field1, field2, field3, field4, minutes })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addGuestModal.hide();
+                    document.getElementById('addGuestForm').reset();
+                    document.getElementById('guestMinutes').value = 1440;
+                    loadGuests();
+                    showToast('success', 'Guest Authorized', `Successfully authorized ${mac}`);
+                } else {
+                    showToast('error', 'Authorization Failed', data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showToast('error', 'Network Error', error.message);
+            } finally {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Update guest authorization
+        async function updateGuest() {
+            const mac = document.getElementById('editGuestMac').value;
+            const name = document.getElementById('editGuestName').value.trim();
+            const email = document.getElementById('editGuestEmail').value.trim();
+            const company = document.getElementById('editGuestCompany').value.trim();
+            const field1 = document.getElementById('editGuestField1').value.trim();
+            const field2 = document.getElementById('editGuestField2').value.trim();
+            const field3 = document.getElementById('editGuestField3').value.trim();
+            const field4 = document.getElementById('editGuestField4').value.trim();
+            const minutes = parseInt(document.getElementById('editGuestMinutes').value) || 1440;
+            
+            const updateBtn = document.getElementById('updateGuestBtn');
+            updateBtn.classList.add('loading');
+            updateBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/sites/${currentSiteId}/wlans/${currentWlanId}/guests/${encodeURIComponent(mac)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, company, field1, field2, field3, field4, minutes })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    editGuestModal.hide();
+                    loadGuests();
+                    showToast('success', 'Guest Updated', `Successfully updated ${mac}`);
+                } else {
+                    showToast('error', 'Update Failed', data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showToast('error', 'Network Error', error.message);
+            } finally {
+                updateBtn.classList.remove('loading');
+                updateBtn.disabled = false;
+            }
+        }
+
+        // Delete guest authorization
+        async function deleteGuest() {
+            var mac = document.getElementById('editGuestMac').value;
+            
+            if (!mac) {
+                showToast('error', 'Error', 'No guest selected');
+                return;
+            }
+            
+            var deleteBtn = document.getElementById('deleteGuestBtn');
+            deleteBtn.classList.add('loading');
+            deleteBtn.disabled = true;
+            
+            try {
+                var response = await fetch('/api/sites/' + currentSiteId + '/wlans/' + currentWlanId + '/guests/' + encodeURIComponent(mac), {
+                    method: 'DELETE'
+                });
+                var data = await response.json();
+                
+                if (data.success) {
+                    editGuestModal.hide();
+                    loadGuests();
+                    showToast('success', 'Access Revoked', 'Successfully revoked access for ' + mac);
+                } else {
+                    showToast('error', 'Revoke Failed', data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showToast('error', 'Network Error', error.message);
+            } finally {
+                deleteBtn.classList.remove('loading');
+                deleteBtn.disabled = false;
+            }
+        }
+
+        // Event listeners
+        testConnectionBtn.addEventListener('click', testConnection);
+        siteSearch.addEventListener('input', filterSites);
+        
+        siteSelector.addEventListener('change', function() {
+            const siteId = this.value;
+            currentSiteId = siteId;
+            currentWlanId = null;
+            
+            if (siteId) {
+                loadWlans(siteId);
+            } else {
+                wlanSelector.innerHTML = '<option value="">Select a site first...</option>';
+                wlanSelector.disabled = true;
+            }
+            
+            // Hide sections
+            statsSection.style.display = 'none';
+            guestSection.style.display = 'none';
+            addGuestBtn.disabled = true;
+            refreshBtn.disabled = true;
+            emptyState.style.display = 'block';
+        });
+        
+        wlanSelector.addEventListener('change', function() {
+            const wlanId = this.value;
+            currentWlanId = wlanId;
+            
+            if (wlanId) {
+                loadGuests();
+                statsSection.style.display = 'flex';
+                guestSection.style.display = 'block';
+                addGuestBtn.disabled = false;
+                bulkImportBtn.disabled = false;
+                refreshBtn.disabled = false;
+                emptyState.style.display = 'none';
+            } else {
+                statsSection.style.display = 'none';
+                guestSection.style.display = 'none';
+                addGuestBtn.disabled = true;
+                bulkImportBtn.disabled = true;
+                refreshBtn.disabled = true;
+                emptyState.style.display = 'block';
+            }
+        });
+        
+        addGuestBtn.addEventListener('click', function() {
+            document.getElementById('addGuestForm').reset();
+            document.getElementById('guestMinutes').value = 1440;
+            document.getElementById('clientSearchResults').innerHTML = '<div class="text-center text-secondary py-3"><small>Type to search for connected clients</small></div>';
+            addGuestModal.show();
+        });
+        
+        // Bulk import button handler
+        bulkImportBtn.addEventListener('click', function() {
+            resetBulkImportModal();
+            bulkImportModal.show();
+        });
+        
+        // Bulk import event listeners
+        document.getElementById('downloadTemplateBtn').addEventListener('click', downloadCsvTemplate);
+        document.getElementById('csvFileInput').addEventListener('change', function() {
+            if (this.files.length > 0) {
+                previewCSV(this.files[0]);
+            }
+        });
+        document.getElementById('startImportBtn').addEventListener('click', startBulkImport);
+        
+        // Reset bulk import modal on close
+        document.getElementById('bulkImportModal').addEventListener('hidden.bs.modal', resetBulkImportModal);
+        
+        refreshBtn.addEventListener('click', loadGuests);
+        
+        document.getElementById('submitGuestBtn').addEventListener('click', submitGuest);
+        document.getElementById('updateGuestBtn').addEventListener('click', updateGuest);
+        document.getElementById('deleteGuestBtn').addEventListener('click', deleteGuest);
+        
+        document.getElementById('guestSearch').addEventListener('input', function() {
+            displayGuests(guests);
+        });
+        
+        document.getElementById('clientSearch').addEventListener('input', function() {
+            clearTimeout(clientSearchTimeout);
+            clientSearchTimeout = setTimeout(() => searchClients(this.value), 300);
+        });
+        
+        // Duration preset buttons
+        document.querySelectorAll('.duration-preset').forEach(preset => {
+            preset.addEventListener('click', function() {
+                const minutes = this.dataset.minutes;
+                const container = this.closest('.mb-3');
+                const input = container.querySelector('input[type="number"]');
+                input.value = minutes;
+                
+                // Update active state
+                container.querySelectorAll('.duration-preset').forEach(p => p.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Auto-test connection on page load
+        document.addEventListener('DOMContentLoaded', testConnection);
+    </script>
+</body>
+</html>
