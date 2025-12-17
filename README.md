@@ -70,19 +70,42 @@ By pre-authorizing device MAC addresses, these devices can connect to guest WiFi
 
 ### Docker Deployment
 
-1. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Mist API credentials
-   ```
+#### Option 1: Pull from GitHub Container Registry (Recommended)
 
-2. **Build and run**
-   ```bash
-   docker compose up -d
-   ```
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your Mist API credentials
 
-3. **Access the portal**
-   Open http://localhost:5000 in your browser
+# Pull and run
+docker compose up -d
+```
+
+The container image is available at:
+```
+ghcr.io/jmorrison-juniper/mistguestauthorizations:latest
+```
+
+#### Option 2: Build Locally
+
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your Mist API credentials
+
+# Build and run locally
+docker compose -f docker-compose.dev.yml up -d
+```
+
+**Access the portal**: Open http://localhost:5000 in your browser
+
+#### Podman Alternative
+
+```bash
+podman-compose up -d
+# or
+podman run -d -p 5000:5000 --env-file .env ghcr.io/jmorrison-juniper/mistguestauthorizations:latest
+```
 
 ## Configuration
 
@@ -155,6 +178,27 @@ MistGuestAuthorizations/
 └── README.md              # This file
 ```
 
+## Mist API Endpoints Used
+
+This application uses the following Juniper Mist API endpoints via the `mistapi` Python SDK:
+
+| API Endpoint | Method | Description |
+|--------------|--------|-------------|
+| `mistapi.api.v1.self.self.getSelf` | GET | Get current API token info and name |
+| `mistapi.api.v1.orgs.orgs.getOrg` | GET | Get organization details |
+| `mistapi.api.v1.orgs.sites.listOrgSites` | GET | List all sites in organization |
+| `mistapi.api.v1.orgs.wlans.listOrgWlans` | GET | List organization-level WLANs |
+| `mistapi.api.v1.orgs.templates.getOrgTemplate` | GET | Get WLAN template details |
+| `mistapi.api.v1.orgs.sitegroups.getOrgSiteGroup` | GET | Get site group details |
+| `mistapi.api.v1.sites.wlans.listSiteWlans` | GET | List site-level WLANs |
+| `mistapi.api.v1.sites.guests.listSiteAllGuestAuthorizations` | GET | List all guest authorizations for a site |
+| `mistapi.api.v1.orgs.guests.listOrgGuestAuthorizations` | GET | List org-level guest authorizations |
+| `mistapi.api.v1.sites.guests.updateSiteGuestAuthorization` | PUT | Create/update guest authorization |
+| `mistapi.api.v1.orgs.guests.updateOrgGuestAuthorization` | PUT | Create/update org-level guest authorization |
+| `mistapi.api.v1.sites.stats.listSiteWirelessClientsStats` | GET | Search connected wireless clients |
+
+> **Note**: Guest revocation uses PUT with `minutes=0` to immediately expire the authorization (the DELETE endpoint returns 200 but doesn't actually remove the guest).
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -194,7 +238,9 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**.
+
+See the [LICENSE](LICENSE) file for full details.
 
 ## Author
 
