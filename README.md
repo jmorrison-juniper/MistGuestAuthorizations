@@ -29,17 +29,24 @@ By pre-authorizing device MAC addresses, these devices can connect to guest WiFi
 
 ## Screenshots
 
-<!-- TODO: Add screenshots -->
+### Main Dashboard
+![Main Dashboard](docs/screenshots/01-main-dashboard.png)
 
-| Main Dashboard | Add Guest Dialog |
-|----------------|------------------|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Add Guest](docs/screenshots/add-guest.png) |
+### Add Guest Authorization
+| Blank Form | Filled Form |
+|------------|-------------|
+| ![Add Guest Blank](docs/screenshots/03-add-guest-blank.png) | ![Add Guest Filled](docs/screenshots/04-add-guest-filled.png) |
 
-| Edit Guest | Connected Clients Search |
-|------------|-------------------------|
-| ![Edit Guest](docs/screenshots/edit-guest.png) | ![Search Clients](docs/screenshots/search-clients.png) |
+### Edit Existing Guest
+![Edit Guest](docs/screenshots/02-edit-guest.png)
 
-> **Note**: Screenshots coming soon. Run the application locally to see the interface.
+### After Adding a Guest
+![Guest Added](docs/screenshots/05-guest-added.png)
+
+### Bulk Import Tool
+| Import Dialog | CSV Format Example |
+|---------------|-------------------|
+| ![Bulk Import](docs/screenshots/06-bulk-import.png) | ![CSV Example](docs/screenshots/07-csv-example.png) |
 
 ## Quick Start
 
