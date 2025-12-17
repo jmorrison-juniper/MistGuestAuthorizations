@@ -27,6 +27,20 @@ By pre-authorizing device MAC addresses, these devices can connect to guest WiFi
 - ⏱️ **Flexible Duration** - Set authorization from 1 hour to 5 years
 - 🐳 **Docker Ready** - Easy deployment with Docker/Podman
 
+## Screenshots
+
+<!-- TODO: Add screenshots -->
+
+| Main Dashboard | Add Guest Dialog |
+|----------------|------------------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Add Guest](docs/screenshots/add-guest.png) |
+
+| Edit Guest | Connected Clients Search |
+|------------|-------------------------|
+| ![Edit Guest](docs/screenshots/edit-guest.png) | ![Search Clients](docs/screenshots/search-clients.png) |
+
+> **Note**: Screenshots coming soon. Run the application locally to see the interface.
+
 ## Quick Start
 
 ### Prerequisites
@@ -198,20 +212,6 @@ This application uses the following Juniper Mist API endpoints via the `mistapi`
 | `mistapi.api.v1.sites.stats.listSiteWirelessClientsStats` | GET | Search connected wireless clients |
 
 > **Note**: Guest revocation uses PUT with `minutes=0` to immediately expire the authorization (the DELETE endpoint returns 200 but doesn't actually remove the guest).
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/test-connection` | Test Mist API connection |
-| GET | `/api/sites` | List all sites |
-| GET | `/api/sites/<site_id>/wlans` | List guest WLANs for a site |
-| GET | `/api/sites/<site_id>/wlans/<wlan_id>/guests` | List authorized guests |
-| POST | `/api/sites/<site_id>/wlans/<wlan_id>/guests` | Authorize a new guest |
-| PUT | `/api/sites/<site_id>/wlans/<wlan_id>/guests/<mac>` | Update guest authorization |
-| DELETE | `/api/sites/<site_id>/wlans/<wlan_id>/guests/<mac>` | Revoke guest access |
-| GET | `/api/sites/<site_id>/clients/search` | Search connected clients |
-| GET | `/health` | Health check endpoint |
 
 ## Troubleshooting
 
