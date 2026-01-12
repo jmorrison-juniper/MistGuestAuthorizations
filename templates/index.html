@@ -717,8 +717,12 @@
                                         <span class="duration-preset" data-minutes="60">1h</span>
                                         <span class="duration-preset" data-minutes="480">8h</span>
                                         <span class="duration-preset active" data-minutes="1440">1d</span>
+                                        <span class="duration-preset" data-minutes="2880">2d</span>
+                                        <span class="duration-preset" data-minutes="4320">3d</span>
                                         <span class="duration-preset" data-minutes="10080">1w</span>
                                         <span class="duration-preset" data-minutes="43200">30d</span>
+                                        <span class="duration-preset" data-minutes="129600">90d</span>
+                                        <span class="duration-preset" data-minutes="262800">6mo</span>
                                         <span class="duration-preset" data-minutes="525600">1y</span>
                                     </div>
                                 </div>
@@ -801,8 +805,13 @@
                                         <span class="duration-preset" data-minutes="60">1h</span>
                                         <span class="duration-preset" data-minutes="480">8h</span>
                                         <span class="duration-preset active" data-minutes="1440">1d</span>
+                                        <span class="duration-preset" data-minutes="2880">2d</span>
+                                        <span class="duration-preset" data-minutes="4320">3d</span>
                                         <span class="duration-preset" data-minutes="10080">1w</span>
                                         <span class="duration-preset" data-minutes="43200">30d</span>
+                                        <span class="duration-preset" data-minutes="129600">90d</span>
+                                        <span class="duration-preset" data-minutes="262800">6mo</span>
+                                        <span class="duration-preset" data-minutes="525600">1y</span>
                                     </div>
                                 </div>
                             </div>
@@ -1720,7 +1729,7 @@
         document.querySelectorAll('.duration-preset').forEach(preset => {
             preset.addEventListener('click', function() {
                 const minutes = this.dataset.minutes;
-                const container = this.closest('.mb-3');
+                const container = this.closest('.mb-2');
                 const input = container.querySelector('input[type="number"]');
                 input.value = minutes;
                 
