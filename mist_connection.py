@@ -17,6 +17,11 @@ import mistapi
 logger = logging.getLogger(__name__)
 
 
+class NoGuestPortalSSIDsError(Exception):
+    """Raised when no SSIDs with guest portal enabled are found in the organization."""
+    pass
+
+
 def normalize_mac(mac: str) -> str:
     """Normalize a MAC address to lowercase with colons.
     
@@ -289,6 +294,13 @@ class MistConnection:
             ]
             
             logger.info(f"Found {len(result_sites)} sites with guest WLANs (out of {len(sites)} total)")
+            
+            # Raise error if no guest portal SSIDs found
+            if filter_guest_wlans and len(result_sites) == 0:
+                error_msg = "No sites with guest portal enabled SSIDs found in this organization. Please configure at least one WLAN with a guest captive portal in the Mist dashboard."
+                logger.error(error_msg)
+                raise NoGuestPortalSSIDsError(error_msg)
+            
             return result_sites
             
         except Exception as error:

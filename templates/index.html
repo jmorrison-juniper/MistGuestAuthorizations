@@ -551,6 +551,27 @@
     </nav>
 
     <div class="container-fluid py-4">
+        <!-- No Guest Portal SSIDs Error Banner (hidden by default) -->
+        <div id="noGuestPortalBanner" class="alert alert-danger alert-dismissible fade show d-none mb-4" role="alert" style="background: linear-gradient(135deg, #8B0000 0%, #5C0000 100%); border: 2px solid #FF5252; border-radius: 12px;">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-exclamation-octagon-fill me-3" style="font-size: 2rem; color: #FF5252;"></i>
+                <div>
+                    <h5 class="alert-heading mb-2" style="color: #FF5252;">
+                        <strong>No Guest Portal SSIDs Found</strong>
+                    </h5>
+                    <p class="mb-2" id="noGuestPortalMessage">
+                        No sites with guest portal enabled SSIDs were found in this organization.
+                    </p>
+                    <hr style="border-color: rgba(255,82,82,0.3);">
+                    <p class="mb-0 small">
+                        <strong>To fix this:</strong> Go to <a href="https://manage.mist.com" target="_blank" class="alert-link" style="color: #FF9999;">Mist Dashboard</a> → 
+                        Organization → Wireless → WLANs → Create or edit a WLAN → Enable <em>Guest Portal</em> under Portal settings.
+                    </p>
+                </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
         <!-- Site & WLAN Selector -->
         <div class="row mb-4">
             <div class="col-md-4 mb-3">
@@ -976,9 +997,29 @@
             }
         }
 
+        // Show/hide the no guest portal banner
+        function showNoGuestPortalError(message) {
+            const banner = document.getElementById('noGuestPortalBanner');
+            const messageEl = document.getElementById('noGuestPortalMessage');
+            if (message) {
+                messageEl.textContent = message;
+            }
+            banner.classList.remove('d-none');
+            // Scroll to top to ensure banner is visible
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function hideNoGuestPortalError() {
+            const banner = document.getElementById('noGuestPortalBanner');
+            banner.classList.add('d-none');
+        }
+
         // Load sites from API
         async function loadSites() {
             try {
+                // Hide any previous error banner
+                hideNoGuestPortalError();
+                
                 const response = await fetch('/api/sites');
                 const data = await response.json();
                 
@@ -986,10 +1027,19 @@
                     sites = data.sites;
                     populateSiteSelector(sites);
                 } else {
-                    alert('Failed to load sites: ' + (data.error || 'Unknown error'));
+                    // Check for specific error type
+                    if (data.error_type === 'no_guest_portal_ssids') {
+                        showNoGuestPortalError(data.error);
+                        showToast('error', 'No Guest Portal SSIDs', 'This organization has no WLANs with guest portal enabled.', 10000);
+                        // Disable site selector
+                        siteSelector.innerHTML = '<option value="">No guest portal SSIDs configured...</option>';
+                        siteSelector.disabled = true;
+                    } else {
+                        showToast('error', 'Failed to Load Sites', data.error || 'Unknown error');
+                    }
                 }
             } catch (error) {
-                alert('Error loading sites: ' + error.message);
+                showToast('error', 'Error', 'Error loading sites: ' + error.message);
             }
         }
 

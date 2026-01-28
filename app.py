@@ -49,7 +49,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", os.urandom(24).hex())
 
 # Import Mist connection module
-from mist_connection import MistConnection
+from mist_connection import MistConnection, NoGuestPortalSSIDsError
 
 # Module-level Mist connection instance
 _mist_connection: Optional[MistConnection] = None
@@ -98,6 +98,13 @@ def get_sites():
         sites = mist.get_sites(filter_guest_wlans=True)
         logger.info(f"Retrieved {len(sites)} sites with guest WLANs from Mist API")
         return jsonify({"success": True, "sites": sites})
+    except NoGuestPortalSSIDsError as error:
+        logger.error(f"No guest portal SSIDs configured: {error}")
+        return jsonify({
+            "success": False, 
+            "error": str(error),
+            "error_type": "no_guest_portal_ssids"
+        }), 404
     except Exception as error:
         logger.error(f"Error fetching sites: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
