@@ -200,7 +200,7 @@ MistGuestAuthorizations/
 └── README.md              # This file
 ```
 
-The image build workflow calls the shared `reusable-container-image.yml` workflow in [misthelper-devtools](https://github.com/jmorrison-juniper/misthelper-devtools). The caller pins a devtools release commit, and a comment names the release tag.
+The image build workflow and the release workflow call the shared `reusable-container-image.yml` workflow in [misthelper-devtools](https://github.com/jmorrison-juniper/misthelper-devtools). Each caller pins a devtools release commit, and a comment names the release tag. A `YY.MM.DD.HH.MM` tag, or a run of `release.yml` by hand with a version, pushes the image with the version and `latest` tags and creates the GitHub release. Dependabot keeps the actions and the devtools pins up to date.
 
 ## Mist API Endpoints Used
 
