@@ -196,8 +196,11 @@ MistGuestAuthorizations/
 ├── docker-compose.yml     # Docker compose configuration
 ├── .env.example           # Environment template
 ├── .gitignore             # Git ignore rules
+├── .github/workflows/     # Image build and release workflows
 └── README.md              # This file
 ```
+
+The image build workflow calls the shared `reusable-container-image.yml` workflow in [misthelper-devtools](https://github.com/jmorrison-juniper/misthelper-devtools). The caller pins a devtools release commit, and a comment names the release tag.
 
 ## Mist API Endpoints Used
 
