@@ -52,7 +52,7 @@ By pre-authorizing device MAC addresses, these devices can connect to guest WiFi
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.13+
 - Juniper Mist API Token with appropriate permissions
 - (Optional) Docker or Podman for containerized deployment
 
