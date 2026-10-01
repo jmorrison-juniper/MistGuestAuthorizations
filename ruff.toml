@@ -1,0 +1,7 @@
+target-version = "py313"
+
+[lint.per-file-ignores]
+# Each Flask route and each Mist SDK wrapper turns any API failure into a JSON
+# error or a logged fallback, as the app did before the gates.
+"app.py" = ["BLE001"]
+"mist_connection.py" = ["BLE001"]
