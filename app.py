@@ -1,5 +1,3 @@
-# ruff: noqa: BLE001
-# Broad route handlers preserve the original JSON error responses.
 """
 MistGuestAuthorizations - Juniper Mist Guest WiFi Pre-Authorization Portal
 A Flask-based web application for setting up guest WiFi pre-authorizations

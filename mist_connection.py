@@ -1,5 +1,3 @@
-# ruff: noqa: BLE001
-# Broad handlers preserve the original Mist API fallback behavior.
 """
 Mist API Connection Module for MistGuestAuthorizations
 Handles authentication and API calls to Juniper Mist Cloud for guest authorization.
