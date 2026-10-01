@@ -12,14 +12,23 @@ import re
 import time
 from typing import Any
 
-import mistapi
+import mistapi  # type: ignore[import-untyped]  # mistapi does not ship type stubs.
+from requests import RequestException
 
 logger = logging.getLogger(__name__)
+MIST_API_ERRORS = (
+    AttributeError,
+    KeyError,
+    OSError,
+    RequestException,
+    RuntimeError,
+    TypeError,
+    ValueError,
+)
 
 
 class NoGuestPortalSSIDsError(Exception):
     """Raised when no SSIDs with guest portal enabled are found in the organization."""
-
 
 
 def normalize_mac(mac: str) -> str:
@@ -103,7 +112,7 @@ class MistConnection:
             if isinstance(self_data, dict):
                 return self_data.get("name", "Unknown Token")
             return "Unknown Token"
-        except Exception as error:
+        except MIST_API_ERRORS as error:
             logger.warning(f"Could not get token name: {error}")
             return "Unknown Token"
 
@@ -152,7 +161,7 @@ class MistConnection:
                         "error": "No organizations found for this API token",
                     }
 
-        except Exception as error:
+        except MIST_API_ERRORS as error:
             logger.error(f"Connection test failed: {error}")
             return {"success": False, "error": str(error)}
 
@@ -239,7 +248,7 @@ class MistConnection:
                                     if hasattr(tmpl_response, "data")
                                     else {}
                                 )
-                            except Exception as e:
+                            except MIST_API_ERRORS as e:
                                 logger.debug(
                                     f"Could not fetch template {template_id}: {e}"
                                 )
@@ -269,7 +278,7 @@ class MistConnection:
                                     sitegroup_cache[sitegroup_id] = (
                                         sitegroup.get("site_ids", []) or []
                                     )
-                                except Exception as e:
+                                except MIST_API_ERRORS as e:
                                     logger.debug(
                                         f"Could not fetch sitegroup {sitegroup_id}: {e}"
                                     )
@@ -302,7 +311,7 @@ class MistConnection:
                                         sitegroup_cache[sitegroup_id] = (
                                             sitegroup.get("site_ids", []) or []
                                         )
-                                    except Exception as e:
+                                    except MIST_API_ERRORS as e:
                                         logger.debug(
                                             f"Could not fetch sitegroup {sitegroup_id}: {e}"
                                         )
@@ -311,7 +320,7 @@ class MistConnection:
                                 for site_id in sitegroup_cache[sitegroup_id]:
                                     sites_with_guest_wlans.add(site_id)
 
-            except Exception as e:
+            except MIST_API_ERRORS as e:
                 logger.warning(f"Could not fetch org WLANs for filtering: {e}")
 
             # Build result list - only sites with guest WLANs
@@ -339,7 +348,7 @@ class MistConnection:
 
             return result_sites
 
-        except Exception as error:
+        except MIST_API_ERRORS as error:
             logger.error(f"Error fetching sites: {error}")
             raise
 
@@ -350,7 +359,7 @@ class MistConnection:
             org_id: str = self.org_id or ""
 
             # Get site WLANs
-            site_wlans = []
+            site_wlans: list[dict[str, Any]] = []
             try:
                 response = mistapi.api.v1.sites.wlans.listSiteWlans(
                     session, site_id, limit=1000
@@ -358,11 +367,11 @@ class MistConnection:
                 site_wlans = (
                     mistapi.get_all(response=response, mist_session=session) or []
                 )
-            except Exception as e:
+            except MIST_API_ERRORS as e:
                 logger.debug(f"Could not fetch site WLANs: {e}")
 
             # Get org WLANs (they may apply to this site)
-            org_wlans = []
+            org_wlans: list[dict[str, Any]] = []
             try:
                 response = mistapi.api.v1.orgs.wlans.listOrgWlans(
                     session, org_id, limit=1000
@@ -370,7 +379,7 @@ class MistConnection:
                 org_wlans = (
                     mistapi.get_all(response=response, mist_session=session) or []
                 )
-            except Exception as e:
+            except MIST_API_ERRORS as e:
                 logger.debug(f"Could not fetch org WLANs: {e}")
 
             # Combine and filter for guest-portal enabled WLANs
@@ -440,7 +449,7 @@ class MistConnection:
                 else:
                     guests = []
 
-            except Exception as e:
+            except MIST_API_ERRORS as e:
                 logger.debug(f"Could not fetch guests from site endpoint: {e}")
                 # Try org-level endpoint
                 try:
@@ -458,7 +467,7 @@ class MistConnection:
                         guests = guests_data.get("results", [])
                     else:
                         guests = []
-                except Exception as e2:
+                except MIST_API_ERRORS as e2:
                     logger.debug(f"Could not fetch guests from org endpoint: {e2}")
                     guests = []
 
@@ -544,6 +553,9 @@ class MistConnection:
             Dict with success status and guest info or error
         """
         try:
+            # The API token name always replaces client-provided field4.
+            del field4
+
             session = self._get_session()
 
             # Normalize MAC address
@@ -581,10 +593,9 @@ class MistConnection:
             # Use updateSiteGuestAuthorization to create/update guest authorization
             # The Mist API uses the same endpoint for both create and update
             try:
-                response = mistapi.api.v1.sites.guests.updateSiteGuestAuthorization(
+                mistapi.api.v1.sites.guests.updateSiteGuestAuthorization(
                     session, site_id, normalized_mac, body=guest_data
                 )
-                result = response.data if hasattr(response, "data") else response
 
                 # Calculate times
                 current_time = int(time.time())
@@ -605,16 +616,15 @@ class MistConnection:
                     },
                 }
 
-            except Exception as e:
+            except MIST_API_ERRORS as e:
                 logger.warning(f"Site-level authorization failed: {e}")
                 # Try org-level if site-level fails
                 try:
                     org_id: str = self.org_id or ""
 
-                    response = mistapi.api.v1.orgs.guests.updateOrgGuestAuthorization(
+                    mistapi.api.v1.orgs.guests.updateOrgGuestAuthorization(
                         session, org_id, normalized_mac, body=guest_data
                     )
-                    result = response.data if hasattr(response, "data") else response
 
                     current_time = int(time.time())
                     authorized_expiring_time = current_time + (minutes * 60)
@@ -633,14 +643,14 @@ class MistConnection:
                             "wlan_id": wlan_id,
                         },
                     }
-                except Exception as e2:
+                except MIST_API_ERRORS as e2:
                     logger.error(f"Org-level authorization also failed: {e2}")
                     return {
                         "success": False,
                         "error": f"Authorization failed: {e2!s}",
                     }
 
-        except Exception as error:
+        except MIST_API_ERRORS as error:
             logger.error(f"Error authorizing guest {mac}: {error}")
             return {"success": False, "error": str(error)}
 
@@ -690,7 +700,7 @@ class MistConnection:
                 )
                 return {"success": False, "error": error_msg}
 
-        except Exception as error:
+        except MIST_API_ERRORS as error:
             logger.error(f"Error deauthorizing guest {mac}: {error}")
             return {"success": False, "error": str(error)}
 
@@ -727,6 +737,9 @@ class MistConnection:
             Dict with success status and updated guest info or error
         """
         try:
+            # The API token name always replaces client-provided field4.
+            del field4
+
             session = self._get_session()
 
             # Normalize MAC address
@@ -736,7 +749,7 @@ class MistConnection:
                 return {"success": False, "error": str(e)}
 
             # Build update payload with only provided fields
-            update_data = {}
+            update_data: dict[str, Any] = {}
             if name is not None:
                 update_data["name"] = name
             if email is not None:
@@ -762,10 +775,9 @@ class MistConnection:
 
             # Try site-level update first
             try:
-                response = mistapi.api.v1.sites.guests.updateSiteGuestAuthorization(
+                mistapi.api.v1.sites.guests.updateSiteGuestAuthorization(
                     session, site_id, normalized_mac, body=update_data
                 )
-                result = response.data if hasattr(response, "data") else response
 
                 current_time = int(time.time())
                 authorized_expiring_time = current_time + ((minutes or 1440) * 60)
@@ -785,15 +797,14 @@ class MistConnection:
                     },
                 }
 
-            except Exception as e:
+            except MIST_API_ERRORS as e:
                 logger.warning(f"Site-level update failed: {e}")
                 # Try org-level if site-level fails
                 try:
                     org_id: str = self.org_id or ""
-                    response = mistapi.api.v1.orgs.guests.updateOrgGuestAuthorization(
+                    mistapi.api.v1.orgs.guests.updateOrgGuestAuthorization(
                         session, org_id, normalized_mac, body=update_data
                     )
-                    result = response.data if hasattr(response, "data") else response
 
                     current_time = int(time.time())
                     authorized_expiring_time = current_time + ((minutes or 1440) * 60)
@@ -812,11 +823,11 @@ class MistConnection:
                             "wlan_id": wlan_id,
                         },
                     }
-                except Exception as e2:
+                except MIST_API_ERRORS as e2:
                     logger.error(f"Org-level update also failed: {e2}")
                     return {"success": False, "error": f"Update failed: {e2!s}"}
 
-        except Exception as error:
+        except MIST_API_ERRORS as error:
             logger.error(f"Error updating guest {mac}: {error}")
             return {"success": False, "error": str(error)}
 
@@ -843,7 +854,7 @@ class MistConnection:
                 clients_data = (
                     mistapi.get_all(response=response, mist_session=session) or []
                 )
-            except Exception as e:
+            except MIST_API_ERRORS as e:
                 logger.debug(f"Could not fetch wireless client stats: {e}")
                 clients_data = []
 
@@ -883,6 +894,6 @@ class MistConnection:
 
             return clients
 
-        except Exception as error:
+        except MIST_API_ERRORS as error:
             logger.error(f"Error searching wireless clients: {error}")
             raise
