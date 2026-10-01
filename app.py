@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 MistGuestAuthorizations - Juniper Mist Guest WiFi Pre-Authorization Portal
 A Flask-based web application for setting up guest WiFi pre-authorizations

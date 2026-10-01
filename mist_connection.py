@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Mist API Connection Module for MistGuestAuthorizations
 Handles authentication and API calls to Juniper Mist Cloud for guest authorization.
