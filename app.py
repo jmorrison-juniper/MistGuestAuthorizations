@@ -1,3 +1,5 @@
+# ruff: noqa: BLE001
+# Broad route handlers preserve the original JSON error responses.
 """
 MistGuestAuthorizations - Juniper Mist Guest WiFi Pre-Authorization Portal
 A Flask-based web application for setting up guest WiFi pre-authorizations
@@ -40,14 +42,6 @@ logging.basicConfig(
     handlers=log_handlers,
 )
 logger = logging.getLogger(__name__)
-APP_ROUTE_ERRORS = (
-    AttributeError,
-    KeyError,
-    OSError,
-    RuntimeError,
-    TypeError,
-    ValueError,
-)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -102,7 +96,7 @@ def test_connection():
                 ),
                 400,
             )
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Connection test error: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -127,7 +121,7 @@ def get_sites():
             ),
             404,
         )
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error fetching sites: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -140,7 +134,7 @@ def get_site_wlans(site_id):
         wlans = mist.get_guest_wlans(site_id)
         logger.info(f"Retrieved {len(wlans)} guest WLANs for site {site_id}")
         return jsonify({"success": True, "wlans": wlans})
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error fetching WLANs for site {site_id}: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -153,7 +147,7 @@ def get_wlan_guests(site_id, wlan_id):
         guests = mist.get_wlan_guests(site_id, wlan_id)
         logger.info(f"Retrieved {len(guests)} authorized guests for WLAN {wlan_id}")
         return jsonify({"success": True, "guests": guests})
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error fetching guests for WLAN {wlan_id}: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -193,7 +187,7 @@ def authorize_guest(site_id, wlan_id):
             logger.warning(f"Failed to authorize guest {mac}: {result.get('error')}")
             return jsonify({"success": False, "error": result.get("error")}), 400
 
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error authorizing guest: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -218,7 +212,7 @@ def deauthorize_guest(site_id, wlan_id, guest_mac):
             )
             return jsonify({"success": False, "error": result.get("error")}), 400
 
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error deauthorizing guest: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -255,7 +249,7 @@ def update_guest(site_id, wlan_id, guest_mac):
             logger.warning(f"Failed to update guest {guest_mac}: {result.get('error')}")
             return jsonify({"success": False, "error": result.get("error")}), 400
 
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error updating guest: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -271,7 +265,7 @@ def search_clients(site_id):
             f"Found {len(clients)} clients matching '{query}' at site {site_id}"
         )
         return jsonify({"success": True, "clients": clients})
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error searching clients: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -336,7 +330,7 @@ def get_csv_template():
                 "Content-Disposition": "attachment; filename=guest_import_template.csv"
             },
         )
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error generating CSV template: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -365,7 +359,7 @@ def get_sites_wlans_map():
 
         logger.info(f"Built sites/WLANs map with {len(sites_map)} sites")
         return jsonify({"success": True, "map": sites_map})
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Error building sites/WLANs map: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
@@ -412,7 +406,7 @@ def bulk_import_guests():
             )
             return jsonify({"success": False, "error": result.get("error")}), 400
 
-    except APP_ROUTE_ERRORS as error:
+    except Exception as error:
         logger.error(f"Bulk import error: {error}")
         return jsonify({"success": False, "error": str(error)}), 500
 
