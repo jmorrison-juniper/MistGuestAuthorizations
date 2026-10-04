@@ -89,6 +89,16 @@ By pre-authorizing device MAC addresses, these devices can connect to guest WiFi
 6. **Access the portal**
    Open http://localhost:5000 in your browser
 
+### Offline Tests
+
+The application tests use Flask's test client and mocked Mist SDK calls. They
+do not need credentials, hardware, or live Mist API access. With the runtime
+dependencies installed, run:
+
+```bash
+PYTHON_DOTENV_DISABLED=1 python -m unittest discover -s tests -v
+```
+
 ### Docker Deployment
 
 #### Option 1: Pull from GitHub Container Registry (Recommended)
