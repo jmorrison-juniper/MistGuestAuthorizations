@@ -9,6 +9,8 @@ bandit==1.9.4
 black==26.10.0
 mypy==1.20.2
 pip-audit==2.10.1
+playwright==1.58.0
+radon==6.0.1
 ruff==0.16.10
 vulture==2.16
 misthelper-devtools @ git+https://github.com/jmorrison-juniper/misthelper-devtools@b140350ebc40e61b57a3a65731c0df520f143661  # v0.6.0
