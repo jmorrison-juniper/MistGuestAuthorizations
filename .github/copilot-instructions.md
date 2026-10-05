@@ -63,12 +63,13 @@ The Compose service sets the container name to `mistguestauthorizations`. Do not
 
 Use the `documentation` label for documentation work, the `ci` label for workflow work, and the `python` label for Python changes. Use the `in-progress` label while work is active.
 
-The repository has no changelog, issue template, pull request template, CodeQL workflow, or `auto-merge` label. Main requires the offline application tests, the shared quality gates, and the container build checks. The shared gate workflow also syncs issues for failed gates on `main`.
+The repository has no changelog, issue template, pull request template, or `auto-merge` label. Main requires the offline application tests, the shared quality gates, and the container build checks. After the first green CodeQL run on `main`, main also requires the `CodeQL` and `codeql / Analyze (python)` checks. The shared gate workflow also syncs issues for failed gates on `main`.
 
 | Workflow | Trigger and purpose |
 | - | - |
 | `quality-gates.yml` | Runs offline tests and shared Python gates on pull requests and pushes to `main`. |
 | `build-and-push.yml` | Builds a container image for pull requests and pushes to `main`. It does not push an image for a pull request. |
+| `codeql.yml` | Runs the CodeQL analysis for Python on pull requests, pushes to `main`, each Monday at 06:00 UTC, and a manual run. |
 | `ste-lint.yml` | Grades `README.md`, `AGENTS.md`, and this file on each pull request and on pushes to `main`. |
 | `stranded-branch-report.yml` | Reports branches each Monday at 07:00 UTC and supports a manual run. |
 | `release.yml` | Publishes a release for tags in `YY.MM.DD.HH.MM` format or a manual run with a version. |
