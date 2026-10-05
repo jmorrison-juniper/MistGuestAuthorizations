@@ -46,7 +46,16 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", os.urandom(24).hex())
 
 # Import Mist connection module
-from mist_connection import MistConnection, NoGuestPortalSSIDsError
+from mist_connection import (
+    NO_GUEST_PORTAL_SSIDS_MESSAGE,
+    MistConnection,
+    NoGuestPortalSSIDsError,
+)
+
+# The client gets this text for an unexpected server error.
+INTERNAL_ERROR_MESSAGE = (
+    "The server could not complete the request. Examine the server log for the cause."
+)
 
 # Module-level Mist connection instance
 _mist_connection: MistConnection | None = None
@@ -58,6 +67,19 @@ def get_mist_connection() -> MistConnection:
     if _mist_connection is None:
         _mist_connection = MistConnection()
     return _mist_connection
+
+
+def internal_error_response(action: str, error: Exception) -> tuple[Response, int]:
+    """Log an unexpected exception and return a generic JSON error.
+
+    The client gets no exception text, because that text can expose the
+    internal state of the server (CWE-209). The server log keeps the full
+    exception and its stack trace for the operator.
+    """
+    # Keep the cause and the stack trace on the server only.
+    logger.error("%s failed: %s", action, error, exc_info=error)
+    body = {"success": False, "error": INTERNAL_ERROR_MESSAGE}  # Same response shape.
+    return jsonify(body), 500  # Keep the status code that the frontend expects.
 
 
 @app.route("/")
@@ -95,8 +117,7 @@ def test_connection():
                 400,
             )
     except Exception as error:
-        logger.error(f"Connection test error: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Connection test", error)
 
 
 @app.route("/api/sites", methods=["GET"])
@@ -108,20 +129,19 @@ def get_sites():
         logger.info(f"Retrieved {len(sites)} sites with guest WLANs from Mist API")
         return jsonify({"success": True, "sites": sites})
     except NoGuestPortalSSIDsError as error:
-        logger.error(f"No guest portal SSIDs configured: {error}")
+        logger.error("No guest portal SSIDs configured: %s", error)
         return (
             jsonify(
                 {
                     "success": False,
-                    "error": str(error),
+                    "error": NO_GUEST_PORTAL_SSIDS_MESSAGE,
                     "error_type": "no_guest_portal_ssids",
                 }
             ),
             404,
         )
     except Exception as error:
-        logger.error(f"Error fetching sites: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Site list", error)
 
 
 @app.route("/api/sites/<site_id>/wlans", methods=["GET"])
@@ -133,8 +153,7 @@ def get_site_wlans(site_id):
         logger.info(f"Retrieved {len(wlans)} guest WLANs for site {site_id}")
         return jsonify({"success": True, "wlans": wlans})
     except Exception as error:
-        logger.error(f"Error fetching WLANs for site {site_id}: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("WLAN list", error)
 
 
 @app.route("/api/sites/<site_id>/wlans/<wlan_id>/guests", methods=["GET"])
@@ -146,8 +165,7 @@ def get_wlan_guests(site_id, wlan_id):
         logger.info(f"Retrieved {len(guests)} authorized guests for WLAN {wlan_id}")
         return jsonify({"success": True, "guests": guests})
     except Exception as error:
-        logger.error(f"Error fetching guests for WLAN {wlan_id}: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Guest list", error)
 
 
 @app.route("/api/sites/<site_id>/wlans/<wlan_id>/guests", methods=["POST"])
@@ -186,8 +204,7 @@ def authorize_guest(site_id, wlan_id):
             return jsonify({"success": False, "error": result.get("error")}), 400
 
     except Exception as error:
-        logger.error(f"Error authorizing guest: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Guest authorization", error)
 
 
 @app.route(
@@ -211,8 +228,7 @@ def deauthorize_guest(site_id, wlan_id, guest_mac):
             return jsonify({"success": False, "error": result.get("error")}), 400
 
     except Exception as error:
-        logger.error(f"Error deauthorizing guest: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Guest revocation", error)
 
 
 @app.route(
@@ -248,8 +264,7 @@ def update_guest(site_id, wlan_id, guest_mac):
             return jsonify({"success": False, "error": result.get("error")}), 400
 
     except Exception as error:
-        logger.error(f"Error updating guest: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Guest update", error)
 
 
 @app.route("/api/sites/<site_id>/clients/search", methods=["GET"])
@@ -264,8 +279,7 @@ def search_clients(site_id):
         )
         return jsonify({"success": True, "clients": clients})
     except Exception as error:
-        logger.error(f"Error searching clients: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Client search", error)
 
 
 @app.route("/api/csv-template", methods=["GET"])
@@ -329,8 +343,7 @@ def get_csv_template():
             },
         )
     except Exception as error:
-        logger.error(f"Error generating CSV template: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("CSV template", error)
 
 
 @app.route("/api/sites-wlans-map", methods=["GET"])
@@ -358,8 +371,7 @@ def get_sites_wlans_map():
         logger.info(f"Built sites/WLANs map with {len(sites_map)} sites")
         return jsonify({"success": True, "map": sites_map})
     except Exception as error:
-        logger.error(f"Error building sites/WLANs map: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Site and WLAN map", error)
 
 
 @app.route("/api/bulk-import", methods=["POST"])
@@ -405,8 +417,7 @@ def bulk_import_guests():
             return jsonify({"success": False, "error": result.get("error")}), 400
 
     except Exception as error:
-        logger.error(f"Bulk import error: {error}")
-        return jsonify({"success": False, "error": str(error)}), 500
+        return internal_error_response("Bulk import", error)
 
 
 @app.route("/health")

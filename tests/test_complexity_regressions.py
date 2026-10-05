@@ -11,7 +11,11 @@ os.environ.pop("MIST_APITOKEN", None)
 os.environ.pop("MIST_ORG_ID", None)
 os.environ.pop("org_id", None)
 
-from mist_connection import MistConnection, NoGuestPortalSSIDsError
+from mist_connection import (
+    UPDATE_FAILED_MESSAGE,
+    MistConnection,
+    NoGuestPortalSSIDsError,
+)
 
 
 class SiteDiscoveryTests(unittest.TestCase):
@@ -273,9 +277,8 @@ class GuestUpdateTests(unittest.TestCase):
         self.org_update.side_effect = RuntimeError("offline org failure")
         with self.assertLogs("mist_connection", level="ERROR"):
             result = self.connection.update_guest("site-1", "wlan-1", "aabbccddeeff")
-        self.assertEqual(
-            result, {"success": False, "error": "Update failed: offline org failure"}
-        )
+        self.assertEqual(result, {"success": False, "error": UPDATE_FAILED_MESSAGE})
+        self.assertNotIn("offline org failure", result["error"])
 
     def test_invalid_mac_and_session_failure_do_not_update(self):
         result = self.connection.update_guest("site-1", "wlan-1", "invalid")
@@ -285,7 +288,7 @@ class GuestUpdateTests(unittest.TestCase):
             "offline session failure"
         )
         result = self.connection.update_guest("site-1", "wlan-1", "aabbccddeeff")
-        self.assertEqual(result, {"success": False, "error": "offline session failure"})
+        self.assertEqual(result, {"success": False, "error": UPDATE_FAILED_MESSAGE})
         self.site_update.assert_not_called()
         self.org_update.assert_not_called()
 

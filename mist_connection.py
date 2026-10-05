@@ -16,6 +16,25 @@ import mistapi  # type: ignore[import-untyped]  # mistapi does not ship type stu
 logger = logging.getLogger(__name__)
 
 
+# The client gets these fixed messages. Exception text stays in the server log,
+# because it can expose the internal state of the server (CWE-209).
+NO_GUEST_PORTAL_SSIDS_MESSAGE = (
+    "No sites with guest portal enabled SSIDs found in this organization. "
+    "Please configure at least one WLAN with a guest captive portal in the Mist dashboard."
+)
+INVALID_MAC_MESSAGE = (
+    "Invalid MAC address. Use 12 hexadecimal digits, for example AA:BB:CC:DD:EE:FF."
+)
+CONNECTION_FAILED_MESSAGE = (
+    "The connection to the Mist API failed. Examine the server log for the cause."
+)
+AUTHORIZATION_FAILED_MESSAGE = (
+    "Authorization failed. Examine the server log for the cause."
+)
+REVOCATION_FAILED_MESSAGE = "Revocation failed. Examine the server log for the cause."
+UPDATE_FAILED_MESSAGE = "Update failed. Examine the server log for the cause."
+
+
 class NoGuestPortalSSIDsError(Exception):
     """Raised when no SSIDs with guest portal enabled are found in the organization."""
 
@@ -151,8 +170,8 @@ class MistConnection:
                     }
 
         except Exception as error:
-            logger.error(f"Connection test failed: {error}")
-            return {"success": False, "error": str(error)}
+            logger.error("Connection test failed: %s", error)
+            return {"success": False, "error": CONNECTION_FAILED_MESSAGE}
 
     def get_sites(self, filter_guest_wlans: bool = True) -> list[dict[str, Any]]:
         """Get all sites in the organization.
@@ -204,9 +223,8 @@ class MistConnection:
 
             # Raise error if no guest portal SSIDs found
             if not result_sites:
-                error_msg = "No sites with guest portal enabled SSIDs found in this organization. Please configure at least one WLAN with a guest captive portal in the Mist dashboard."
-                logger.error(error_msg)
-                raise NoGuestPortalSSIDsError(error_msg)
+                logger.error(NO_GUEST_PORTAL_SSIDS_MESSAGE)
+                raise NoGuestPortalSSIDsError(NO_GUEST_PORTAL_SSIDS_MESSAGE)
 
             return result_sites
 
@@ -509,8 +527,9 @@ class MistConnection:
             # Normalize MAC address
             try:
                 normalized_mac = normalize_mac(mac)
-            except ValueError as e:
-                return {"success": False, "error": str(e)}
+            except ValueError as error:
+                logger.warning("MAC address validation failed: %s", error)
+                return {"success": False, "error": INVALID_MAC_MESSAGE}
 
             # Build the guest authorization payload
             guest_data = {"mac": normalized_mac, "minutes": minutes, "authorized": True}
@@ -592,15 +611,12 @@ class MistConnection:
                         },
                     }
                 except Exception as e2:
-                    logger.error(f"Org-level authorization also failed: {e2}")
-                    return {
-                        "success": False,
-                        "error": f"Authorization failed: {e2!s}",
-                    }
+                    logger.error("Org-level authorization also failed: %s", e2)
+                    return {"success": False, "error": AUTHORIZATION_FAILED_MESSAGE}
 
         except Exception as error:
-            logger.error(f"Error authorizing guest {mac}: {error}")
-            return {"success": False, "error": str(error)}
+            logger.error("Error authorizing guest %s: %s", mac, error)
+            return {"success": False, "error": AUTHORIZATION_FAILED_MESSAGE}
 
     def deauthorize_guest(self, site_id: str, wlan_id: str, mac: str) -> dict[str, Any]:
         """Remove guest authorization from a WLAN.
@@ -622,8 +638,9 @@ class MistConnection:
             # Normalize MAC to format with colons (aa:bb:cc:dd:ee:ff)
             try:
                 normalized_mac = normalize_mac(mac)
-            except ValueError as e:
-                return {"success": False, "error": str(e)}
+            except ValueError as error:
+                logger.warning("MAC address validation failed: %s", error)
+                return {"success": False, "error": INVALID_MAC_MESSAGE}
 
             logger.info(
                 f"Attempting to deauthorize guest MAC: {normalized_mac} by setting minutes=0"
@@ -649,8 +666,8 @@ class MistConnection:
                 return {"success": False, "error": error_msg}
 
         except Exception as error:
-            logger.error(f"Error deauthorizing guest {mac}: {error}")
-            return {"success": False, "error": str(error)}
+            logger.error("Error deauthorizing guest %s: %s", mac, error)
+            return {"success": False, "error": REVOCATION_FAILED_MESSAGE}
 
     def update_guest(
         self,
@@ -690,7 +707,11 @@ class MistConnection:
 
             session = self._get_session()
 
-            normalized_mac = normalize_mac(mac)
+            try:
+                normalized_mac = normalize_mac(mac)
+            except ValueError as error:
+                logger.warning("MAC address validation failed: %s", error)
+                return {"success": False, "error": INVALID_MAC_MESSAGE}
             fields = {
                 "name": name,
                 "email": email,
@@ -731,8 +752,8 @@ class MistConnection:
             }
 
         except Exception as error:
-            logger.error(f"Error updating guest {mac}: {error}")
-            return {"success": False, "error": str(error)}
+            logger.error("Error updating guest %s: %s", mac, error)
+            return {"success": False, "error": UPDATE_FAILED_MESSAGE}
 
     def _update_guest_at_site_or_org(
         self,
@@ -752,8 +773,8 @@ class MistConnection:
                     session, self.org_id or "", mac, body=update_data
                 )
             except Exception as org_error:
-                logger.error(f"Org-level update also failed: {org_error}")
-                return {"success": False, "error": f"Update failed: {org_error!s}"}
+                logger.error("Org-level update also failed: %s", org_error)
+                return {"success": False, "error": UPDATE_FAILED_MESSAGE}
         return None
 
     def search_wireless_clients(
