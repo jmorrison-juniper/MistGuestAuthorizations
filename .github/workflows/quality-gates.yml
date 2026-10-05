@@ -54,6 +54,9 @@ jobs:
       bandit: true
       bandit-args: -r . -ll -x ./.github,./docs,./templates
       pip-audit: true
+      radon: true
+      radon-max: 15
+      radon-args: app.py mist_connection.py tests
       vulture: true
       vulture-args: . --min-confidence 90 --exclude .github,docs,templates
 

@@ -184,143 +184,16 @@ class MistConnection:
             # Sort sites by name
             sites.sort(key=lambda site: site.get("name", "").lower())
 
-            # If not filtering, return all sites
             if not filter_guest_wlans:
-                return [
-                    {
-                        "id": site.get("id"),
-                        "name": site.get("name", "Unknown"),
-                        "address": site.get("address", ""),
-                        "country_code": site.get("country_code", ""),
-                        "timezone": site.get("timezone", ""),
-                    }
-                    for site in sites
-                ]
+                return [self._site_summary(site) for site in sites]
 
-            # Build set of site IDs that have guest WLANs
-            # We only query org WLANs + templates + sitegroups (no per-site queries)
-            sites_with_guest_wlans: set = set()
-            all_site_ids = {site.get("id") for site in sites}
-
-            try:
-                # Get org-level WLANs
-                response = mistapi.api.v1.orgs.wlans.listOrgWlans(
-                    session, org_id, limit=1000
-                )
-                org_wlans = (
-                    mistapi.get_all(response=response, mist_session=session) or []
-                )
-
-                # Cache for templates and sitegroups to avoid duplicate lookups
-                template_cache: dict[str, Any] = {}
-                sitegroup_cache: dict[str, list[str]] = {}
-
-                for wlan in org_wlans:
-                    portal = wlan.get("portal", {})
-                    if not (portal.get("enabled", False) and wlan.get("enabled", True)):
-                        continue
-
-                    # This is a guest WLAN - find which sites it applies to
-                    template_id = wlan.get("template_id")
-
-                    if template_id:
-                        # WLAN is part of a template - get template's site/sitegroup assignments
-                        if template_id not in template_cache:
-                            try:
-                                tmpl_response = (
-                                    mistapi.api.v1.orgs.templates.getOrgTemplate(
-                                        session, org_id, template_id
-                                    )
-                                )
-                                template_cache[template_id] = (
-                                    tmpl_response.data
-                                    if hasattr(tmpl_response, "data")
-                                    else {}
-                                )
-                            except Exception as e:
-                                logger.debug(
-                                    f"Could not fetch template {template_id}: {e}"
-                                )
-                                template_cache[template_id] = {}
-
-                        template = template_cache[template_id]
-                        applies = template.get("applies", {})
-
-                        # Add directly assigned sites
-                        for site_id in applies.get("site_ids", []) or []:
-                            sites_with_guest_wlans.add(site_id)
-
-                        # Get sites from sitegroups
-                        for sitegroup_id in applies.get("sitegroup_ids", []) or []:
-                            if sitegroup_id not in sitegroup_cache:
-                                try:
-                                    sg_response = (
-                                        mistapi.api.v1.orgs.sitegroups.getOrgSiteGroup(
-                                            session, org_id, sitegroup_id
-                                        )
-                                    )
-                                    sitegroup = (
-                                        sg_response.data
-                                        if hasattr(sg_response, "data")
-                                        else {}
-                                    )
-                                    sitegroup_cache[sitegroup_id] = (
-                                        sitegroup.get("site_ids", []) or []
-                                    )
-                                except Exception as e:
-                                    logger.debug(
-                                        f"Could not fetch sitegroup {sitegroup_id}: {e}"
-                                    )
-                                    sitegroup_cache[sitegroup_id] = []
-
-                            for site_id in sitegroup_cache[sitegroup_id]:
-                                sites_with_guest_wlans.add(site_id)
-                    else:
-                        # WLAN not in template - check apply_to and site_ids/sitegroup_ids
-                        apply_to = wlan.get("apply_to", "")
-                        if apply_to == "all":
-                            # Applies to all sites - add all and we're done
-                            sites_with_guest_wlans.update(all_site_ids)
-                        else:
-                            # Check direct site assignments
-                            for site_id in wlan.get("site_ids", []) or []:
-                                sites_with_guest_wlans.add(site_id)
-                            # Check sitegroup assignments
-                            for sitegroup_id in wlan.get("sitegroup_ids", []) or []:
-                                if sitegroup_id not in sitegroup_cache:
-                                    try:
-                                        sg_response = mistapi.api.v1.orgs.sitegroups.getOrgSiteGroup(
-                                            session, org_id, sitegroup_id
-                                        )
-                                        sitegroup = (
-                                            sg_response.data
-                                            if hasattr(sg_response, "data")
-                                            else {}
-                                        )
-                                        sitegroup_cache[sitegroup_id] = (
-                                            sitegroup.get("site_ids", []) or []
-                                        )
-                                    except Exception as e:
-                                        logger.debug(
-                                            f"Could not fetch sitegroup {sitegroup_id}: {e}"
-                                        )
-                                        sitegroup_cache[sitegroup_id] = []
-
-                                for site_id in sitegroup_cache[sitegroup_id]:
-                                    sites_with_guest_wlans.add(site_id)
-
-            except Exception as e:
-                logger.warning(f"Could not fetch org WLANs for filtering: {e}")
+            sites_with_guest_wlans = self._guest_wlan_site_ids(
+                session, org_id, {site.get("id") for site in sites}
+            )
 
             # Build result list - only sites with guest WLANs
             result_sites = [
-                {
-                    "id": site.get("id"),
-                    "name": site.get("name", "Unknown"),
-                    "address": site.get("address", ""),
-                    "country_code": site.get("country_code", ""),
-                    "timezone": site.get("timezone", ""),
-                }
+                self._site_summary(site)
                 for site in sites
                 if site.get("id") in sites_with_guest_wlans
             ]
@@ -330,7 +203,7 @@ class MistConnection:
             )
 
             # Raise error if no guest portal SSIDs found
-            if filter_guest_wlans and len(result_sites) == 0:
+            if not result_sites:
                 error_msg = "No sites with guest portal enabled SSIDs found in this organization. Please configure at least one WLAN with a guest captive portal in the Mist dashboard."
                 logger.error(error_msg)
                 raise NoGuestPortalSSIDsError(error_msg)
@@ -340,6 +213,92 @@ class MistConnection:
         except Exception as error:
             logger.error(f"Error fetching sites: {error}")
             raise
+
+    @staticmethod
+    def _site_summary(site: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": site.get("id"),
+            "name": site.get("name", "Unknown"),
+            "address": site.get("address", ""),
+            "country_code": site.get("country_code", ""),
+            "timezone": site.get("timezone", ""),
+        }
+
+    def _template_assignments(
+        self,
+        session: mistapi.APISession,
+        org_id: str,
+        template_id: str,
+        cache: dict[str, Any],
+    ) -> dict[str, Any]:
+        if template_id not in cache:
+            try:
+                response = mistapi.api.v1.orgs.templates.getOrgTemplate(
+                    session, org_id, template_id
+                )
+                cache[template_id] = getattr(response, "data", {})
+            except Exception as error:
+                logger.debug(f"Could not fetch template {template_id}: {error}")
+                cache[template_id] = {}
+        return cache[template_id].get("applies", {})
+
+    def _sitegroup_sites(
+        self,
+        session: mistapi.APISession,
+        org_id: str,
+        sitegroup_id: str,
+        cache: dict[str, list[str]],
+    ) -> list[str]:
+        if sitegroup_id not in cache:
+            try:
+                response = mistapi.api.v1.orgs.sitegroups.getOrgSiteGroup(
+                    session, org_id, sitegroup_id
+                )
+                cache[sitegroup_id] = (
+                    getattr(response, "data", {}).get("site_ids", []) or []
+                )
+            except Exception as error:
+                logger.debug(f"Could not fetch sitegroup {sitegroup_id}: {error}")
+                cache[sitegroup_id] = []
+        return cache[sitegroup_id]
+
+    def _guest_wlan_site_ids(
+        self, session: mistapi.APISession, org_id: str, all_site_ids: set[str]
+    ) -> set[str]:
+        site_ids: set[str] = set()
+        template_cache: dict[str, Any] = {}
+        sitegroup_cache: dict[str, list[str]] = {}
+        try:
+            response = mistapi.api.v1.orgs.wlans.listOrgWlans(
+                session, org_id, limit=1000
+            )
+            wlans = mistapi.get_all(response=response, mist_session=session) or []
+            for wlan in wlans:
+                if not (
+                    wlan.get("portal", {}).get("enabled", False)
+                    and wlan.get("enabled", True)
+                ):
+                    continue
+                template_id = wlan.get("template_id")
+                if template_id:
+                    assignments = self._template_assignments(
+                        session, org_id, template_id, template_cache
+                    )
+                elif wlan.get("apply_to", "") == "all":
+                    site_ids.update(all_site_ids)
+                    continue
+                else:
+                    assignments = wlan
+                site_ids.update(assignments.get("site_ids", []) or [])
+                for group_id in assignments.get("sitegroup_ids", []) or []:
+                    site_ids.update(
+                        self._sitegroup_sites(
+                            session, org_id, group_id, sitegroup_cache
+                        )
+                    )
+        except Exception as error:
+            logger.warning(f"Could not fetch org WLANs for filtering: {error}")
+        return site_ids
 
     def get_guest_wlans(self, site_id: str) -> list[dict[str, Any]]:
         """Get WLANs with guest portal enabled for a site."""
@@ -731,94 +690,71 @@ class MistConnection:
 
             session = self._get_session()
 
-            # Normalize MAC address
-            try:
-                normalized_mac = normalize_mac(mac)
-            except ValueError as e:
-                return {"success": False, "error": str(e)}
-
-            # Build update payload with only provided fields
-            update_data: dict[str, Any] = {}
-            if name is not None:
-                update_data["name"] = name
-            if email is not None:
-                update_data["email"] = email
-            if company is not None:
-                update_data["company"] = company
-            if field1 is not None:
-                update_data["field1"] = field1
-            if field2 is not None:
-                update_data["field2"] = field2
-            if field3 is not None:
-                update_data["field3"] = field3
+            normalized_mac = normalize_mac(mac)
+            fields = {
+                "name": name,
+                "email": email,
+                "company": company,
+                "field1": field1,
+                "field2": field2,
+                "field3": field3,
+                "minutes": minutes,
+            }
+            update_data = {
+                key: value for key, value in fields.items() if value is not None
+            }
 
             # field4 is always auto-populated with the API token name (regardless of passed value)
             token_name = self.get_token_name()
             update_data["field4"] = token_name
 
-            if minutes is not None:
-                update_data["minutes"] = minutes
+            failure = self._update_guest_at_site_or_org(
+                session, site_id, normalized_mac, update_data
+            )
+            if failure is not None:
+                return failure
 
-            if not update_data:
-                return {"success": False, "error": "No fields to update"}
-
-            # Try site-level update first
-            try:
-                mistapi.api.v1.sites.guests.updateSiteGuestAuthorization(
-                    session, site_id, normalized_mac, body=update_data
-                )
-
-                current_time = int(time.time())
-                authorized_expiring_time = current_time + ((minutes or 1440) * 60)
-
-                return {
-                    "success": True,
-                    "guest": {
-                        "mac": normalized_mac,
-                        "name": name or "",
-                        "email": email or "",
-                        "company": company or "",
-                        "authorized_time": current_time,
-                        "authorized_expiring_time": authorized_expiring_time,
-                        "remaining_minutes": minutes or 1440,
-                        "is_expired": False,
-                        "wlan_id": wlan_id,
-                    },
-                }
-
-            except Exception as e:
-                logger.warning(f"Site-level update failed: {e}")
-                # Try org-level if site-level fails
-                try:
-                    org_id: str = self.org_id or ""
-                    mistapi.api.v1.orgs.guests.updateOrgGuestAuthorization(
-                        session, org_id, normalized_mac, body=update_data
-                    )
-
-                    current_time = int(time.time())
-                    authorized_expiring_time = current_time + ((minutes or 1440) * 60)
-
-                    return {
-                        "success": True,
-                        "guest": {
-                            "mac": normalized_mac,
-                            "name": name or "",
-                            "email": email or "",
-                            "company": company or "",
-                            "authorized_time": current_time,
-                            "authorized_expiring_time": authorized_expiring_time,
-                            "remaining_minutes": minutes or 1440,
-                            "is_expired": False,
-                            "wlan_id": wlan_id,
-                        },
-                    }
-                except Exception as e2:
-                    logger.error(f"Org-level update also failed: {e2}")
-                    return {"success": False, "error": f"Update failed: {e2!s}"}
+            current_time = int(time.time())
+            return {
+                "success": True,
+                "guest": {
+                    "mac": normalized_mac,
+                    "name": name or "",
+                    "email": email or "",
+                    "company": company or "",
+                    "authorized_time": current_time,
+                    "authorized_expiring_time": current_time + ((minutes or 1440) * 60),
+                    "remaining_minutes": minutes or 1440,
+                    "is_expired": False,
+                    "wlan_id": wlan_id,
+                },
+            }
 
         except Exception as error:
             logger.error(f"Error updating guest {mac}: {error}")
             return {"success": False, "error": str(error)}
+
+    def _update_guest_at_site_or_org(
+        self,
+        session: mistapi.APISession,
+        site_id: str,
+        mac: str,
+        update_data: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        try:
+            mistapi.api.v1.sites.guests.updateSiteGuestAuthorization(
+                session, site_id, mac, body=update_data
+            )
+        except Exception as error:
+            logger.warning(f"Site-level update failed: {error}")
+            try:
+                mistapi.api.v1.orgs.guests.updateOrgGuestAuthorization(
+                    session, self.org_id or "", mac, body=update_data
+                )
+            except Exception as org_error:
+                logger.error(f"Org-level update also failed: {org_error}")
+                return {"success": False, "error": f"Update failed: {org_error!s}"}
+        return None
 
     def search_wireless_clients(
         self, site_id: str, query: str = ""
