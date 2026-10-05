@@ -12,9 +12,14 @@ os.environ.pop("MIST_ORG_ID", None)
 os.environ.pop("org_id", None)
 os.environ["SECRET_KEY"] = "offline-test-only"
 
-from app import NoGuestPortalSSIDsError
+from app import INTERNAL_ERROR_MESSAGE, NoGuestPortalSSIDsError
 from app import app as flask_app
 from mist_connection import (
+    AUTHORIZATION_FAILED_MESSAGE,
+    CONNECTION_FAILED_MESSAGE,
+    INVALID_MAC_MESSAGE,
+    NO_GUEST_PORTAL_SSIDS_MESSAGE,
+    REVOCATION_FAILED_MESSAGE,
     MistConnection,
     mac_to_api_format,
     mistapi,
@@ -130,7 +135,7 @@ class ApplicationRouteTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.get_json()["error"], "offline SDK")
+        self.assertEqual(response.get_json()["error"], INTERNAL_ERROR_MESSAGE)
 
     def test_site_list_reports_missing_guest_portal_configuration(self):
         with patch("app.get_mist_connection") as get_connection:
@@ -144,7 +149,7 @@ class ApplicationRouteTests(unittest.TestCase):
             response.get_json(),
             {
                 "success": False,
-                "error": "No guest WLANs",
+                "error": NO_GUEST_PORTAL_SSIDS_MESSAGE,
                 "error_type": "no_guest_portal_ssids",
             },
         )
@@ -190,6 +195,102 @@ class ApplicationRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["clients"], [{"mac": "aa:bb:cc:dd:ee:ff"}])
         mist.search_wireless_clients.assert_called_once_with("site-1", "printer")
+
+
+class StackTraceExposureTests(unittest.TestCase):
+    """Regression tests for CWE-209: a response holds no exception text."""
+
+    SECRET = "token=secret-internal-detail"
+
+    def setUp(self):
+        self.client = flask_app.test_client()
+
+    def _routes(self):
+        mac = {"mac": "aa:bb:cc:dd:ee:ff"}
+        bulk = {"site_id": "site-1", "wlan_id": "wlan-1", **mac}
+        guests = "/api/sites/site-1/wlans/wlan-1/guests"
+        return (
+            ("post", "/api/test-connection", None, "test_connection"),
+            ("get", "/api/sites", None, "get_sites"),
+            ("get", "/api/sites/site-1/wlans", None, "get_guest_wlans"),
+            ("get", guests, None, "get_wlan_guests"),
+            ("post", guests, mac, "authorize_guest"),
+            ("delete", guests + "/aa:bb", None, "deauthorize_guest"),
+            ("put", guests + "/aa:bb", {"name": "Guest"}, "update_guest"),
+            (
+                "get",
+                "/api/sites/site-1/clients/search",
+                None,
+                "search_wireless_clients",
+            ),
+            ("get", "/api/sites-wlans-map", None, "get_sites"),
+            ("post", "/api/bulk-import", bulk, "authorize_guest"),
+        )
+
+    def test_unexpected_errors_return_generic_message_and_log_cause(self):
+        for method, url, body, sdk_method in self._routes():
+            with self.subTest(url=url, method=method):
+                mist = Mock()
+                getattr(mist, sdk_method).side_effect = RuntimeError(self.SECRET)
+                with (
+                    patch("app.get_mist_connection", return_value=mist),
+                    self.assertLogs("app", level="ERROR") as logs,
+                ):
+                    response = getattr(self.client, method)(url, json=body)
+
+                self.assertEqual(response.status_code, 500)
+                self.assertEqual(
+                    response.get_json(),
+                    {"success": False, "error": INTERNAL_ERROR_MESSAGE},
+                )
+                self.assertNotIn(self.SECRET, response.get_data(as_text=True))
+                self.assertIn(self.SECRET, "\n".join(logs.output))
+                self.assertIn("Traceback", "\n".join(logs.output))
+
+    def test_csv_template_error_returns_generic_message(self):
+        with (
+            patch("app.csv.writer", side_effect=RuntimeError(self.SECRET)),
+            self.assertLogs("app", level="ERROR") as logs,
+        ):
+            response = self.client.get("/api/csv-template")
+
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn(self.SECRET, response.get_data(as_text=True))
+        self.assertIn(self.SECRET, "\n".join(logs.output))
+
+    def test_missing_guest_portal_message_ignores_exception_text(self):
+        with patch("app.get_mist_connection") as get_connection:
+            get_connection.return_value.get_sites.side_effect = NoGuestPortalSSIDsError(
+                self.SECRET
+            )
+            response = self.client.get("/api/sites")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json()["error"], NO_GUEST_PORTAL_SSIDS_MESSAGE)
+
+    def test_connection_results_hold_fixed_messages(self):
+        connection = MistConnection()
+        connection._get_session = Mock(side_effect=RuntimeError(self.SECRET))
+        cases = (
+            (connection.test_connection, (), CONNECTION_FAILED_MESSAGE),
+            (
+                connection.authorize_guest,
+                ("s", "w", "aabbccddeeff"),
+                AUTHORIZATION_FAILED_MESSAGE,
+            ),
+            (
+                connection.deauthorize_guest,
+                ("s", "w", "aabbccddeeff"),
+                REVOCATION_FAILED_MESSAGE,
+            ),
+        )
+        for method, arguments, message in cases:
+            with self.subTest(method=method.__name__):
+                with self.assertLogs("mist_connection", level="ERROR") as logs:
+                    result = method(*arguments)
+
+                self.assertEqual(result, {"success": False, "error": message})
+                self.assertIn(self.SECRET, "\n".join(logs.output))
 
 
 class MistConnectionTests(unittest.TestCase):
@@ -298,8 +399,7 @@ class MistConnectionTests(unittest.TestCase):
         with patch("mist_connection.mistapi", SimpleNamespace(api=fake_api)):
             result = connection.authorize_guest("site-1", "wlan-1", "invalid")
 
-        self.assertFalse(result["success"])
-        self.assertIn("Invalid MAC address", result["error"])
+        self.assertEqual(result, {"success": False, "error": INVALID_MAC_MESSAGE})
         endpoint.assert_not_called()
 
 
