@@ -12,10 +12,26 @@ The real dashboard below uses fictional offline data, not a live Mist account.
 
 ## How
 
-Install Python 3.13 or later, install the runtime dependencies, and configure
-your Mist API token. Run the Flask app and open `http://localhost:5000`.
-Follow the [setup and deployment guide](docs/guide.md#quick-start) for commands.
-See [configuration](docs/guide.md#configuration) and
+Use Python 3.13 or later. From the repository root, create an environment and
+install the runtime dependencies:
+
+```sh
+python3.13 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+```
+
+Set `MIST_APITOKEN` in `.env`, then start the portal:
+
+```sh
+python app.py
+```
+
+Open `http://localhost:5000` in your browser. For Windows activation, container
+deployment, and detailed setup, follow the
+[setup and deployment guide](docs/guide.md#quick-start). See
+[configuration](docs/guide.md#configuration) and
 [user instructions](docs/guide.md#usage) before you grant device access.
 
 These captures show the actual add, edit, and CSV import screens with
